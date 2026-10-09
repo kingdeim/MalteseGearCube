@@ -3,6 +3,13 @@
 All notable changes to this project are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.2.2] – 2026-10-09
+
+### Changed
+- 3D: edge stones are now a small head at the cube edge on a diagonal stem of the same
+  cross-section (instead of a large block).
+- 3D: corners are cut back next to the edge stones, so centers in edge positions are easier to see.
+
 ## [1.2.1] – 2026-10-09
 
 ### Fixed

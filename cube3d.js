@@ -7,7 +7,9 @@ const Cube3D=(()=>{
   let yaw=0.62,pitch=0.52,dist=6.4,needRender=false,anim=null;
   const DEF={yaw:0.62,pitch:0.52,dist:6.4};
   const SURF=1.0,LIFT=0.004,THICK=0.03;
-  const RING_W=0.12,RING_IN=0.6,CORE_R=0.62; // halbe Breite des Mittelrings, Innenkante der Ringsteine, Kern
+  const RING_W=0.12,RING_IN=0.6,CORE_R=0.62; // halbe Breite des Mittelrings, Innenkante der Mitten, Kern
+  const EDGE_HEAD=0.84,EDGE_HW=0.095,STEM_IN=0.45; // Kantenkopf ab 0.84, halbe Breite längs der Kante, Stielbeginn
+  const NOTCH_L=0.3,NOTCH_D=0.8; // Aussparung der Ecken neben den Kantensteinen
 
   // ---------- Materialien ----------
   const mats={};
@@ -50,8 +52,18 @@ const Cube3D=(()=>{
     // Oktant ohne die hohle Würfelecke: drei Quader
     const B=(a0,a1,b0,b1,c0,c1,m)=>{const iv=(s,p,q)=>s>0?[p,q]:[-q,-p];
       const[X0,X1]=iv(sx,a0,a1),[Y0,Y1]=iv(sy,b0,b1),[Z0,Z1]=iv(sz,c0,c1);g.add(box(X0,X1,Y0,Y1,Z0,Z1,m));};
-    // Ecken lassen die drei Mittelringe (|x|,|y|,|z| < RING_W) frei
-    B(RING_W,N,RING_W,1,RING_W,1,BODY);B(N,1,RING_W,N,RING_W,1,BODY);B(N,1,N,1,RING_W,N,BODY);
+    // Körper aus Rasterzellen (Koordinaten im Oktanten, 0 = Mitte, 1 = Außenfläche):
+    // frei bleiben die drei Mittelringe (< RING_W), die hohle Würfelecke (alle drei ≥ N)
+    // und je eine Aussparung neben den Kantensteinen (eine Koordinate < NOTCH_L, zwei ≥ NOTCH_D).
+    const cuts=[RING_W,NOTCH_L,N,NOTCH_D,1],inBody=(a,b,c)=>{
+      const v=[a,b,c],hi=v.filter(x=>x>=N).length;
+      if(hi===3)return false;
+      for(let i=0;i<3;i++){const o=v.filter((_,j)=>j!==i);if(v[i]<NOTCH_L&&o[0]>=NOTCH_D&&o[1]>=NOTCH_D)return false;}
+      return true;};
+    for(let i=0;i<4;i++)for(let j=0;j<4;j++)for(let k=0;k<4;k++){
+      const m=(p)=>(cuts[p]+cuts[p+1])/2;
+      if(inBody(m(i),m(j),m(k)))B(cuts[i],cuts[i+1],cuts[j],cuts[j+1],cuts[k],cuts[k+1],BODY);
+    }
     B(N,N+0.02,N,1,N,1,HOLE);B(N,1,N,N+0.02,N,1,HOLE);B(N,1,N,1,N,N+0.02,HOLE); // dunkle Innenseiten der Öffnung
     for(const face of ORDER){const n=FACES[face];if(dot(n,c.pos)<=0.5)continue;
       const[r,d]=FRAME[face],su=Math.sign(dot(c.pos,r)),sv=Math.sign(dot(c.pos,d));
@@ -67,12 +79,23 @@ const Cube3D=(()=>{
   // eine Mitte auf einem Kantenplatz liegt vertieft – wie beim Original.
   function ecGroup(e){
     const g=new THREE.Group(),home=e.id.split(""),lo=new THREE.Vector3(),hi=new THREE.Vector3();
+    // Mitte: Säule bis RING_IN; Kante: kleiner Kopf an der Würfelkante (EDGE_HEAD)
+    const inner=home.length===1?RING_IN:EDGE_HEAD,half=home.length===1?RING_W:EDGE_HW;
     for(let i=0;i<3;i++){
       const f=home.map(k=>FACES[k]).find(v=>v[i]!==0);
-      if(f){const s=f[i];lo.setComponent(i,s>0?RING_IN:-1);hi.setComponent(i,s>0?1:-RING_IN);}
-      else{lo.setComponent(i,-RING_W);hi.setComponent(i,RING_W);}
+      if(f){const s=f[i];lo.setComponent(i,s>0?inner:-1);hi.setComponent(i,s>0?1:-inner);}
+      else{lo.setComponent(i,-half);hi.setComponent(i,half);}
     }
     g.add(box(lo.x,hi.x,lo.y,hi.y,lo.z,hi.z,BODY));
+    if(home.length===2){
+      // Stiel diagonal zum Kern, im Querschnitt so groß wie der Kopf
+      const A=V(FACES[home[0]]),Bv=V(FACES[home[1]]),dir=A.clone().add(Bv).normalize();
+      const across=A.clone().sub(Bv).normalize(),axis=new THREE.Vector3().crossVectors(across,dir);
+      const r0=STEM_IN,r1=EDGE_HEAD*Math.SQRT2+0.02,w=(1-EDGE_HEAD)*Math.SQRT2;
+      const s=new THREE.BoxGeometry(2*EDGE_HW,w,r1-r0);
+      s.applyMatrix4(new THREE.Matrix4().makeBasis(axis,across,dir).setPosition(dir.clone().multiplyScalar((r0+r1)/2)));
+      g.add(new THREE.Mesh(s,BODY));
+    }
     for(const face of home){
       let region;
       if(home.length===1)region=rect(-CEN,-CEN,CEN,CEN);
