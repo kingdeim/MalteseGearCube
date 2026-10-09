@@ -62,6 +62,10 @@ details summary{cursor:pointer;color:var(--muted);font-size:14px}
 .help{font-size:14px}
 .help code{background:var(--chip);padding:1px 5px;border-radius:4px}
 .legend{font-size:12px;color:var(--muted);margin-top:6px}
+.seg{display:inline-flex;margin:0 0 8px;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{border:0;border-radius:0;padding:4px 12px;font-size:13px}
+.seg button.on{background:var(--accent);color:#fff}
+#view3d canvas{display:block;border-radius:8px}
 </style>
 </head>
 <body>
@@ -105,8 +109,10 @@ details summary{cursor:pointer;color:var(--muted);font-size:14px}
 
   <section class="nets">
     <div class="panel net"><h2><span class="h" data-i18n="before"></span> <span id="lblBefore"></span></h2><div id="netBefore"></div></div>
-    <div class="panel net"><h2><span class="h" data-i18n="step"></span> <span id="lblStep"></span></h2><div id="netStep"></div>
-      <div class="legend" data-i18n="legendStep"></div></div>
+    <div class="panel net"><h2><span class="h" data-i18n="step"></span> <span id="lblStep"></span></h2>
+      <div class="seg"><button id="vNet" data-i18n="viewNet"></button><button id="v3d">3D</button></div>
+      <div id="netStep"></div><div id="view3d" hidden></div>
+      <div class="legend" id="legendStep" data-i18n="legendStep"></div><div class="legend" id="legend3d" data-i18n="hint3d" hidden></div></div>
     <div class="panel net"><h2><span class="h" data-i18n="after"></span> <span id="lblAfter"></span></h2><div id="netAfter"></div>
       <div class="legend" data-i18n="legendAfter"></div></div>
   </section>
@@ -143,6 +149,8 @@ details summary{cursor:pointer;color:var(--muted);font-size:14px}
   </section>
 </main>
 
+<script src="lib/three.min.js"></script>
+<script src="cube3d.js"></script>
 <script>
 "use strict";
 // ---------- Sprachen / i18n ----------
@@ -172,7 +180,8 @@ de:{
   solved:"gelöst", stepsInfo:"{s} Schritte · {q} Vierteldrehungen", nextInfo:" · nächster: {m}", fromInfo:" (aus {m})", end:"Ende",
   dGears:"Zahnräder (Winkel = Eigendrehung gegen den Uhrzeigersinn)", dGearSpin:"{s} dreht sich auf der Stelle",
   dCorners:"Ecken", dCornerTwist:"{s} verdreht", dEC:"Kanten & Mitten", dCenterRot:"{s} auf der Stelle gedreht ({a}°)", dECRot:"{s} auf der Stelle gedreht/gekippt",
-  dNone:"Keine Veränderung – die Zugfolge ist (für diese Stellung) die Identität."
+  dNone:"Keine Veränderung – die Zugfolge ist (für diese Stellung) die Identität.",
+  viewNet:"Netz", hint3d:"Ziehen dreht den Würfel, Mausrad zoomt, Doppelklick setzt die Ansicht zurück. Mit „Vor ▶“ und „Abspielen“ werden die Züge animiert.", no3d:"3D nicht verfügbar: lib/three.min.js fehlt oder WebGL ist deaktiviert."
 },
 en:{
   title:"Maltese Gear Cube – Move Sequence Explorer",
@@ -199,7 +208,8 @@ en:{
   solved:"solved", stepsInfo:"{s} steps · {q} quarter turns", nextInfo:" · next: {m}", fromInfo:" (from {m})", end:"End",
   dGears:"Gears (angle = own rotation counterclockwise)", dGearSpin:"{s} spins in place",
   dCorners:"Corners", dCornerTwist:"{s} twisted", dEC:"Edges & centers", dCenterRot:"{s} rotated in place ({a}°)", dECRot:"{s} rotated/flipped in place",
-  dNone:"No change – the sequence is the identity (for this position)."
+  dNone:"No change – the sequence is the identity (for this position).",
+  viewNet:"Net", hint3d:"Drag to rotate the cube, scroll to zoom, double-click resets the view. “Next ▶” and “Play” animate the moves.", no3d:"3D unavailable: lib/three.min.js is missing or WebGL is disabled."
 },
 es:{
   title:"Maltese Gear Cube – Explorador de secuencias",
@@ -226,7 +236,8 @@ es:{
   solved:"resuelto", stepsInfo:"{s} pasos · {q} cuartos de vuelta", nextInfo:" · siguiente: {m}", fromInfo:" (de {m})", end:"Final",
   dGears:"Engranajes (ángulo = giro propio antihorario)", dGearSpin:"{s} gira en su sitio",
   dCorners:"Esquinas", dCornerTwist:"{s} orientada", dEC:"Aristas y centros", dCenterRot:"{s} girado en su sitio ({a}°)", dECRot:"{s} girado/volteado en su sitio",
-  dNone:"Sin cambios: la secuencia es la identidad (para esta posición)."
+  dNone:"Sin cambios: la secuencia es la identidad (para esta posición).",
+  viewNet:"Desarrollo", hint3d:"Arrastra para girar el cubo, la rueda del ratón hace zoom, doble clic restablece la vista. «Adelante ▶» y «Reproducir» animan los movimientos.", no3d:"3D no disponible: falta lib/three.min.js o WebGL está desactivado."
 }};
 let LANG="de";
 const t=(k,v={})=>(I18N[LANG][k]??I18N.de[k]??k).replace(/\{(\w+)\}/g,(_,n)=>v[n]??"");
@@ -447,9 +458,13 @@ const STAR_TL="M-0.474,-0.909L-0.475,-0.895L-0.48,-0.884L-0.475,-0.863L-0.478,-0
 // Zahnrad um die Achse zentriert; +x = Ausrichtung (gelöst: zur Würfelkante hin).
 const GEAR_PATH="M0.195,-0.225L0.158,-0.217L0.142,-0.209L0.132,-0.209L0.103,-0.191L0.097,-0.191L0.082,-0.178L0.067,-0.161L0.064,-0.145L0.057,-0.132L0.036,-0.071L0.026,-0.062L0.018,-0.059L-0.005,-0.062L-0.039,-0.054L-0.046,-0.061L-0.051,-0.076L-0.062,-0.084L-0.072,-0.105L-0.075,-0.118L-0.093,-0.15L-0.116,-0.164L-0.124,-0.164L-0.137,-0.172L-0.182,-0.172L-0.187,-0.175L-0.207,-0.153L-0.204,-0.126L-0.199,-0.111L-0.191,-0.092L-0.171,-0.067L-0.126,-0.051L-0.113,-0.043L-0.082,-0.036L-0.07,-0.024L-0.067,-0.016L-0.07,-0.005L-0.067,0.026L-0.064,0.029L-0.067,0.037L-0.079,0.046L-0.087,0.046L-0.103,0.059L-0.155,0.083L-0.175,0.105L-0.186,0.134L-0.188,0.176L-0.176,0.193L-0.163,0.193L-0.161,0.191L-0.15,0.193L-0.108,0.18L-0.095,0.172L-0.08,0.158L-0.062,0.108L-0.057,0.103L-0.041,0.066L-0.034,0.059L-0.021,0.062L0.032,0.059L0.046,0.074L0.088,0.155L0.108,0.175L0.161,0.199L0.203,0.204L0.205,0.207L0.229,0.207L0.233,0.203L0.233,0.195L0.238,0.189L0.238,0.168L0.236,0.166L0.238,0.155L0.233,0.147L0.23,0.126L0.212,0.095L0.2,0.083L0.195,0.083L0.187,0.072L0.168,0.07L0.161,0.064L0.121,0.054L0.116,0.049L0.076,0.038L0.064,0.024L0.067,-0.008L0.062,-0.024L0.064,-0.034L0.074,-0.043L0.084,-0.046L0.1,-0.057L0.118,-0.062L0.124,-0.067L0.132,-0.067L0.155,-0.08L0.179,-0.088L0.207,-0.116L0.217,-0.139L0.22,-0.153L0.217,-0.161L0.222,-0.166L0.222,-0.187L0.225,-0.189L0.222,-0.203L0.217,-0.211L0.205,-0.222Z";
 // Pixelstufen der abgepausten Konturen glätten (Laplace-Glättung) und als weiche Kurve ausgeben
-function smoothPath(d,iter=2){
+function smoothPts(d,iter=2){
   let p=d.replace(/[MZ]/g,"").split("L").map(s=>s.split(",").map(Number));
   for(let k=0;k<iter;k++)p=p.map((q,i)=>{const a=p[(i+p.length-1)%p.length],b=p[(i+1)%p.length];return[(a[0]+2*q[0]+b[0])/4,(a[1]+2*q[1]+b[1])/4];});
+  return p;
+}
+function smoothPath(d,iter=2){
+  const p=smoothPts(d,iter);
   const mid=(a,b)=>[(a[0]+b[0])/2,(a[1]+b[1])/2],n=p.length;
   let s="M"+mid(p[n-1],p[0]).map(f2).join(",");
   for(let i=0;i<n;i++)s+="Q"+p[i].map(f2).join(",")+" "+mid(p[i],p[(i+1)%n]).map(f2).join(",");
@@ -576,7 +591,7 @@ function describeDiff(st0,st1){
 
 // ---------- UI ----------
 const $=id=>document.getElementById(id);
-let steps=[],states=[],cur=0,timer=null,before=null;
+let steps=[],states=[],cur=0,timer=null,before=null,view="net",anim3d=null;
 const store={get(k){try{return localStorage.getItem(k);}catch(e){return null;}},set(k,v){try{localStorage.setItem(k,v);}catch(e){}}};
 function loadMacros(txt){
   const {macros,errs}=parseMacroText(txt);MACROS=macros;
@@ -597,13 +612,14 @@ function compute(){
   store.set("mgc",JSON.stringify({setup:$("setup").value,alg:$("alg").value}));
   draw();
 }
-function draw(){
+function draw(animate=false){
   const after=states[states.length-1],mk=$("markers").checked;
   const sa=signature(index(before)),sb=signature(index(after)),ch=new Set(Object.keys(sa).filter(k=>sa[k]!==sb[k]));
   const nq=steps[cur]?steps[cur].moves[0]:null;
   $("netBefore").innerHTML=render(before,{markers:mk});
   $("netAfter").innerHTML=render(after,{changed:ch,markers:mk});
-  $("netStep").innerHTML=render(states[cur],{nextMove:nq,markers:mk});
+  if(view==="3d"){if(animate&&cur>0)anim3d=Cube3D.play(states[cur-1],steps[cur-1].moves);else{Cube3D.show(states[cur]);anim3d=null;}}
+  else $("netStep").innerHTML=render(states[cur],{nextMove:nq,markers:mk});
   $("lblBefore").textContent=$("setup").value.trim()||t("solved");
   const nQ=steps.reduce((n,s)=>n+s.moves.length,0);
   $("lblAfter").textContent=t("stepsInfo",{s:steps.length,q:nQ});
@@ -621,12 +637,30 @@ $("markers").onchange=draw;
 $("first").onclick=()=>{cur=0;draw();};
 $("last").onclick=()=>{cur=steps.length;draw();};
 $("prev").onclick=()=>{if(cur>0){cur--;draw();}};
-$("next").onclick=()=>{if(cur<steps.length){cur++;draw();}};
-$("play").onclick=()=>{
-  if(timer){clearInterval(timer);timer=null;$("play").textContent=t("play");return;}
-  if(cur>=steps.length)cur=0;$("play").textContent=t("pause");
-  timer=setInterval(()=>{if(cur>=steps.length){clearInterval(timer);timer=null;$("play").textContent=t("play");return;}cur++;draw();},700);draw();
+$("next").onclick=()=>{if(cur<steps.length){cur++;draw(true);}};
+// Abspielen: im Netz alle 700 ms ein Schritt, in 3D jeweils nach Ende der Animation
+$("play").onclick=async()=>{
+  if(timer){timer=null;$("play").textContent=t("play");return;}
+  const me=timer={};$("play").textContent=t("pause");
+  if(cur>=steps.length){cur=0;draw();}
+  while(timer===me&&cur<steps.length){
+    cur++;draw(true);
+    if(view==="3d"&&anim3d){await anim3d;await new Promise(r=>setTimeout(r,150));}
+    else await new Promise(r=>setTimeout(r,700));
+  }
+  if(timer===me){timer=null;$("play").textContent=t("play");}
 };
+// Ansicht des Schritt-Panels: Würfelnetz oder 3D
+function setView(v){
+  if(v==="3d"&&!Cube3D.mount($("view3d"))){$("err").textContent=t("no3d");v="net";}
+  view=v;store.set("mgcView",v);
+  $("vNet").classList.toggle("on",v==="net");$("v3d").classList.toggle("on",v==="3d");
+  $("netStep").hidden=v==="3d";$("view3d").hidden=v!=="3d";
+  $("legendStep").hidden=v==="3d";$("legend3d").hidden=v!=="3d";
+  if(states.length)draw();
+}
+$("vNet").onclick=()=>setView("net");
+$("v3d").onclick=()=>setView("3d");
 $("invert").onclick=()=>{try{$("alg").value=parse($("alg").value).reverse().map(invertStep).map(m=>m.label).join(" ");cur=0;compute();}catch(e){$("err").textContent=e.message;}};
 $("theme").onclick=()=>{const r=document.documentElement,dark=r.dataset.theme?r.dataset.theme==="dark":matchMedia("(prefers-color-scheme: dark)").matches;r.dataset.theme=dark?"light":"dark";};
 const renderPad=()=>{$("pad").innerHTML=["R","L","U","D","F","B"].flatMap(f=>[f,f+"'",f+"2",f+"4"]).concat(["x","y","z"]).map(m=>`<button data-m="${m}">${m}</button>`).join("")+`<button data-m="undo" title="${t("undo")}">⌫</button>`;};
@@ -659,6 +693,7 @@ $("macros").value=store.get("mgcMacros")||DEFAULT_MACROS();
 loadMacros($("macros").value);
 try{const saved=JSON.parse(store.get("mgc")||"null");if(saved){$("setup").value=saved.setup;$("alg").value=saved.alg;}}catch(e){}
 compute();
+setView(store.get("mgcView")==="3d"?"3d":"net");
 window.MGC={solved,parse,applySteps,index,describeDiff};
 </script>
 </body>

@@ -3,6 +3,19 @@
 All notable changes to this project are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.2.0] – 2026-10-09
+
+### Added
+- 3D view in the Step panel (toggle "Net" / "3D", remembered in the browser), built from the
+  traced face graphics with hollow corners, lighting and an orbit camera (drag, scroll, double-click).
+- Animated moves: "Next ▶" and "Play" animate each quarter turn – the turning half rotates 90°,
+  the middle ring 45°, and the ring gears travel and spin. Long macros play faster.
+- Bundled three.js r158 (`lib/three.min.js`, MIT) so the app still works offline without a server.
+
+### Changed
+- "Play" now waits for each animation to finish before moving on in the 3D view.
+- Code split into `index.html` and `cube3d.js`.
+
 ## [1.1.0] – 2026-10-09
 
 ### Added

@@ -19,6 +19,9 @@ switchable in the top-right corner.
 - Macros (e.g. `W`, `J`, `K`, `A`, `C`, `XL`, `XR`, `XB`) – editable and stored in the browser
 - Invert a sequence, optionally expand macros into single moves
 - Face graphics traced from a photo of the real puzzle (corner stars, asymmetric gears)
+- **3D view** with animated moves: switch the Step panel between "Net" and "3D";
+  "Next ▶" and "Play" animate every quarter turn (half 90°, middle ring 45°, gears spinning).
+  Drag to rotate, scroll to zoom, double-click to reset the view.
 
 ## Notation
 
@@ -48,9 +51,16 @@ Solved colors: U white, D yellow, F green, B blue, L red, R purple.
 
 ### Structure
 
-Everything lives in `index.html` – markup, CSS and one plain `<script>` (no framework,
-no external requests), so the app works offline from the file system and on GitHub Pages.
-The script is organised in sections:
+| File | Content |
+|---|---|
+| `index.html` | markup, CSS and the main script (simulation, parser, 2D rendering, UI) |
+| `cube3d.js` | 3D view and move animation (`Cube3D.mount/show/play`) |
+| `lib/three.min.js` | [three.js](https://threejs.org) r158, classic (non-module) build, MIT – see `lib/three.LICENSE` |
+
+All files are plain classic scripts (no ES modules, no build step, no external requests),
+so the app works offline by double-clicking `index.html` as well as on GitHub Pages.
+The only change to the vendored three.js file is the removed deprecation warning at the top.
+The main script in `index.html` is organised in sections:
 
 | Section | Purpose |
 |---|---|
@@ -116,9 +126,29 @@ an edge sitting in a center slot (or vice versa) shows two colours, as on the re
 Changed pieces are found by comparing `signature()` of the before and after states;
 `describeDiff()` reports permutation cycles with gear spin (in 90° steps) and corner twist.
 
+### 3D view and animation (`cube3d.js`)
+
+The 3D scene is rebuilt from the simulation state, piece by piece: each corner is an
+octant-shaped body with the hollow corner cut out plus its three star stickers; gears and
+edge/center stickers are thin extruded plates using the same traced outlines and the same
+colour sampling as the 2D net (three.js `ExtrudeGeometry`, quadratic curves through the
+smoothed points). Every piece is its own `THREE.Group`, so a move can transform it freely.
+
+A step is animated one quarter turn at a time. For each quarter turn the state before and
+after is known, and every piece gets a motion function of t ∈ [0, 1]:
+
+- pieces in the turning half (and all pieces for `x y z`) rotate rigidly by 90°,
+- edges and centers in the middle ring rotate by 45°,
+- ring gears travel around the axis from their start to their end position while their
+  orientation is interpolated (quaternion slerp) – this shows the 90° spin.
+
+After the last quarter turn the scene is rebuilt from the final state. Rendering is on demand
+(only while animating or when the view changes); the camera is a small orbit control written
+for pointer events, so it works with mouse and touch.
+
 ### Persistence and debugging
 
-`localStorage` keys: `mgc` (setup and sequence), `mgcMacros` (edited macros) and
+`localStorage` keys: `mgc` (setup and sequence), `mgcMacros` (edited macros), `mgcView` (net or 3D) and
 `mgcLang` (language). All access is wrapped in `try/catch`, so the app also runs where
 storage is blocked. For experiments in the browser console, `window.MGC` exposes
 `solved`, `parse`, `applySteps`, `index` and `describeDiff`, e.g.:
