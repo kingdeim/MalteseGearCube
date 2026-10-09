@@ -1,0 +1,554 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Maltese Gear Cube</title>
+<style>
+:root{
+  --bg:#f4f2ee; --panel:#ffffff; --ink:#1d1d1f; --muted:#6b6b70; --line:#d9d6cf;
+  --accent:#c2410c; --chip:#efece6; --ring:#ffffff;
+  --body:#121212; --body2:#262626;
+  --cU:#f4f4f4; --cD:#ffd200; --cF:#00a651; --cB:#1e5fd8; --cR:#7b3fc4; --cL:#e8303d;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#16161a; --panel:#1f1f24; --ink:#ececf0; --muted:#9a9aa3; --line:#34343b;
+    --accent:#fb923c; --chip:#2a2a31;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#16161a; --panel:#1f1f24; --ink:#ececf0; --muted:#9a9aa3; --line:#34343b;
+  --accent:#fb923c; --chip:#2a2a31;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:none;margin:0;padding:20px 16px 48px}
+h1{font-size:22px;margin:0 0 4px}
+.sub{color:var(--muted);margin:0 0 18px;font-size:14px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:16px}
+label,.lbl{display:block;font-size:13px;color:var(--muted);margin-bottom:4px}
+input[type=text],textarea{width:100%;font:15px ui-monospace,Consolas,monospace;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink)}
+textarea{font-size:13px;line-height:1.5;min-height:250px;resize:vertical}
+.inputs{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media (max-width:700px){.inputs{grid-template-columns:1fr}}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px}
+.row label.chk{display:flex;gap:6px;align-items:center;margin:0 0 0 6px;color:var(--ink);font-size:14px;cursor:pointer}
+button{font:inherit;font-size:14px;padding:6px 12px;border-radius:8px;border:1px solid var(--line);background:var(--chip);color:var(--ink);cursor:pointer}
+button:hover{border-color:var(--accent)}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.err{color:var(--accent);font-size:13px;margin-top:6px;min-height:1em;white-space:pre-wrap}
+.nets{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+@media (max-width:760px){.nets{grid-template-columns:1fr}}
+.nets .panel{padding:10px}
+.net h2{font-size:15px;margin:0 0 8px;display:flex;justify-content:space-between;gap:8px}
+.net h2 span{color:var(--muted);font-weight:400;font-family:ui-monospace,Consolas,monospace;font-size:13px;text-align:right}
+svg.cube{width:100%;height:auto;display:block}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.chip{font:13px ui-monospace,Consolas,monospace;padding:4px 9px;border-radius:999px;background:var(--chip);border:1px solid var(--line);cursor:pointer}
+.chip.macro{border-style:dashed}
+.chip.done{opacity:.55}
+.chip.cur{background:var(--accent);color:#fff;border-color:var(--accent);opacity:1}
+.movepad{display:flex;flex-wrap:wrap;gap:6px}
+.movepad button{font-family:ui-monospace,Consolas,monospace;min-width:44px}
+.movepad + .lbl{margin-top:12px}
+.diff{font:13px/1.6 ui-monospace,Consolas,monospace;white-space:pre-wrap;margin:0}
+.diff b{font-family:system-ui,sans-serif;font-size:13px}
+.two{display:grid;grid-template-columns:3fr 2fr;gap:16px;align-items:start}
+@media (max-width:900px){.two{grid-template-columns:1fr}}
+details summary{cursor:pointer;color:var(--muted);font-size:14px}
+.help{font-size:14px}
+.help code{background:var(--chip);padding:1px 5px;border-radius:4px}
+.legend{font-size:12px;color:var(--muted);margin-top:6px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Maltese Gear Cube – Zugfolgen nachvollziehen</h1>
+  <p class="sub">Würfelnetz mit Ecken, Zahnrädern, Kanten und Mitten. Gib eine Ausgangsstellung und eine Zugfolge ein (auch mit Makros wie <code>W</code>, <code>J</code>, <code>XL</code>) und vergleiche vorher und nachher.</p>
+
+  <section class="panel">
+    <div class="inputs">
+      <div>
+        <label for="setup">Ausgangsstellung (Setup-Züge, leer = gelöst)</label>
+        <input type="text" id="setup" placeholder="z. B. R U2 F'">
+      </div>
+      <div>
+        <label for="alg">Zugfolge</label>
+        <input type="text" id="alg" value="R3 B4">
+      </div>
+    </div>
+    <div class="err" id="err"></div>
+    <div class="row">
+      <button class="primary" id="apply">Anwenden</button>
+      <button id="first" title="Anfang">⏮</button>
+      <button id="prev">◀ Zurück</button>
+      <button id="next">Vor ▶</button>
+      <button id="last" title="Ende">⏭</button>
+      <button id="play">▶ Abspielen</button>
+      <button id="invert" title="Zugfolge invertieren">Invertieren</button>
+      <label class="chk"><input type="checkbox" id="expand"> Makros in Einzelzüge auflösen</label>
+      <label class="chk"><input type="checkbox" id="markers"> Hilfsmarken</label>
+      <button id="theme" title="Hell/Dunkel">◐</button>
+    </div>
+    <div class="chips" id="chips"></div>
+  </section>
+
+  <section class="nets">
+    <div class="panel net"><h2>Vorher <span id="lblBefore"></span></h2><div id="netBefore"></div></div>
+    <div class="panel net"><h2>Schritt <span id="lblStep"></span></h2><div id="netStep"></div>
+      <div class="legend">Gestrichelt: Mittelring des nächsten Zugs (dreht 45° mit) · Hell umrandet: drehende Hälfte</div></div>
+    <div class="panel net"><h2>Nachher <span id="lblAfter"></span></h2><div id="netAfter"></div>
+      <div class="legend">Orange umrandet: Teile, die sich gegenüber „Vorher“ verändert haben</div></div>
+  </section>
+
+  <div class="two">
+    <section class="panel">
+      <span class="lbl">Zug anhängen</span>
+      <div class="movepad" id="pad"></div>
+      <span class="lbl">Makro anhängen</span>
+      <div class="movepad" id="macroPad"></div>
+      <span class="lbl" style="margin-top:16px">Veränderungen (Vorher → Nachher)</span>
+      <pre class="diff" id="diff"></pre>
+    </section>
+    <section class="panel">
+      <label for="macros">Makros (eine Zeile pro Makro: <code>Name = Züge</code>, <code>#</code> = Kommentar)</label>
+      <textarea id="macros" spellcheck="false"></textarea>
+      <div class="err" id="macroErr"></div>
+      <div class="row" style="margin-top:4px">
+        <button id="macroApply">Makros übernehmen</button>
+        <button id="macroReset">Standard wiederherstellen</button>
+      </div>
+      <p class="legend">Ein Makro mit <code>'</code> (z. B. <code>W'</code>) wird automatisch invertiert, außer es ist eigens definiert (wie <code>A'</code>). Wiederholung mit Zahl: <code>J4</code>, <code>W2</code>. Makros dürfen andere Makros verwenden. Namen: nur Buchstaben, nicht mit U, D, F, B, R, L, x, y, z beginnend.</p>
+    </section>
+  </div>
+
+  <section class="panel help">
+    <details>
+      <summary>Notation &amp; Modell</summary>
+      <p>Züge wie beim 2×2: <code>R L U D F B</code> = Viertelumdrehung der Hälfte im Uhrzeigersinn, <code>'</code> = gegen den Uhrzeigersinn, Zahl = Anzahl Viertelumdrehungen (<code>R3</code>, <code>R4</code>, <code>U'2</code>, <code>R2'</code>). Gruppen: <code>(R4 U R4 U')3</code>. Ganze Würfeldrehungen: <code>x y z</code>.</p>
+      <p>Mechanik-Modell: Jede Drehung einer Hälfte um 90° dreht den dazwischen liegenden Mittelring (4 Mitten, 4 Kanten, 8 Zahnräder) wie beim Mixup-Würfel um 45° mit. Darum ist <code>R4</code> nicht die Identität: Der Ring steht danach um 180° gedreht. Mitten und Kanten können dabei die Plätze tauschen. Ein Zahnrad wandert pro Zug eine Position weiter und dreht sich um 90° um die eigene Achse. Der weiße Punkt (Hilfsmarke, auf dem echten Würfel nicht vorhanden) zeigt seine Ausrichtung; gelöst zeigt er zur Würfelkante. Die Ecken verhalten sich wie beim 2×2.</p>
+      <p>Bezeichnungen: Zahnrad <code>UF</code> = auf der U-Seite, Richtung F. Kante <code>UF</code> = zwischen U und F. Mitte <code>U</code>.</p>
+      <p>Standard-Makros nach der Lösungsanleitung von Reddit/TwistyPuzzles (u. a. <code>W</code> tauscht F↔B und RF↔LB und dreht U, D um 90°).</p>
+    </details>
+  </section>
+</main>
+
+<script>
+"use strict";
+// ---------- Vektor-/Matrix-Helfer ----------
+const dot=(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2];
+const cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];
+const add=(a,b)=>[a[0]+b[0],a[1]+b[1],a[2]+b[2]];
+const scl=(a,s)=>[a[0]*s,a[1]*s,a[2]*s];
+const norm=a=>scl(a,1/Math.hypot(...a));
+const I3=[[1,0,0],[0,1,0],[0,0,1]];
+const mulMV=(M,v)=>[dot(M[0],v),dot(M[1],v),dot(M[2],v)];
+const mulMM=(A,B)=>A.map(r=>[0,1,2].map(j=>r[0]*B[0][j]+r[1]*B[1][j]+r[2]*B[2][j]));
+const tr=M=>[0,1,2].map(i=>[0,1,2].map(j=>M[j][i]));
+function rot(axis,deg){ // Rodrigues, positiv = gegen Uhrzeigersinn von der Achsenspitze aus gesehen
+  const t=deg*Math.PI/180,c=Math.cos(t),s=Math.sin(t),[x,y,z]=axis,C=1-c;
+  return [[c+x*x*C,x*y*C-z*s,x*z*C+y*s],[y*x*C+z*s,c+y*y*C,y*z*C-x*s],[z*x*C-y*s,z*y*C+x*s,c+z*z*C]];
+}
+const EPS=1e-6, near=(a,b)=>Math.abs(a[0]-b[0])+Math.abs(a[1]-b[1])+Math.abs(a[2]-b[2])<1e-4;
+
+// ---------- Geometrie ----------
+const FACES={U:[0,1,0],D:[0,-1,0],F:[0,0,1],B:[0,0,-1],R:[1,0,0],L:[-1,0,0]};
+const ORDER="UDFBRL";
+const letter=v=>ORDER.split("").find(k=>dot(FACES[k],v)>0.9);
+// Netz: Seite -> [rechts, unten] in 3D
+const FRAME={U:[[1,0,0],[0,0,1]],D:[[1,0,0],[0,0,-1]],F:[[1,0,0],[0,-1,0]],B:[[1,0,0],[0,1,0]],R:[[0,0,-1],[0,-1,0]],L:[[0,0,1],[0,-1,0]]};
+// hochkant: U oben, L F R in der Mitte, darunter D und B (B auf dem Kopf)
+const NETPOS={U:[1,0],L:[0,1],F:[1,1],R:[2,1],D:[1,2],B:[1,3]};
+const GEAR_R=0.525, FACE_COLOR=k=>`var(--c${k})`;
+// Zahnrad-Eigendrehung pro Viertelzug (Grad, gegen Uhrzeigersinn von außen bei Zug im Uhrzeigersinn)
+let GEAR_SPIN=-90;
+
+function edgeName(a,b){return [a,b].sort((p,q)=>ORDER.indexOf(p)-ORDER.indexOf(q)).join("")}
+const SLOTS={corners:[],ecs:[],gears:[]};
+for(const sy of[1,-1])for(const sz of[1,-1])for(const sx of[1,-1])
+  SLOTS.corners.push({name:letter([0,sy,0])+letter([0,0,sz])+letter([sx,0,0]),pos:[sx,sy,sz]});
+for(const k of ORDER)SLOTS.ecs.push({name:k,dir:FACES[k],type:"center"});
+for(let i=0;i<6;i++)for(let j=i+1;j<6;j++){const a=ORDER[i],b=ORDER[j];
+  if(Math.abs(dot(FACES[a],FACES[b]))<EPS)SLOTS.ecs.push({name:edgeName(a,b),dir:norm(add(FACES[a],FACES[b])),type:"edge"});}
+for(const f of ORDER)for(const d of ORDER)if(Math.abs(dot(FACES[f],FACES[d]))<EPS)SLOTS.gears.push({name:f+d,f:FACES[f],d:FACES[d]});
+const ecSlotByDir=dir=>SLOTS.ecs.reduce((b,s)=>dot(s.dir,dir)>dot(b.dir,dir)?s:b);
+
+function solved(){
+  return {
+    corners:SLOTS.corners.map(s=>({id:s.name,pos:s.pos.slice(),R:I3})),
+    ecs:SLOTS.ecs.map(s=>({id:s.name,type:s.type,dir:s.dir.slice(),R:I3})),
+    gears:SLOTS.gears.map(s=>({id:s.name,f:s.f.slice(),d:s.d.slice(),P:s.d.slice()}))
+  };
+}
+const clone=st=>JSON.parse(JSON.stringify(st));
+
+// ---------- Züge ----------
+function quarter(st,face,sense){ // sense +1 = im Uhrzeigersinn
+  const n=FACES[face],Q=rot(n,-90*sense),M=rot(n,-45*sense);
+  for(const c of st.corners)if(dot(c.pos,n)>EPS){c.pos=mulMV(Q,c.pos).map(Math.round);c.R=mulMM(Q,c.R);}
+  for(const e of st.ecs){const d=dot(e.dir,n);
+    if(d>EPS){e.dir=ecSlotByDir(mulMV(Q,e.dir)).dir.slice();e.R=mulMM(Q,e.R);}
+    else if(Math.abs(d)<EPS){e.dir=ecSlotByDir(mulMV(M,e.dir)).dir.slice();e.R=mulMM(M,e.R);}
+  }
+  for(const g of st.gears){const p=add(g.f,scl(g.d,GEAR_R));
+    if(dot(p,n)>EPS){g.f=mulMV(Q,g.f).map(Math.round);g.d=mulMV(Q,g.d).map(Math.round);g.P=mulMV(Q,g.P);}
+    else if(Math.abs(dot(g.f,n))<EPS&&Math.abs(dot(g.d,n))<EPS){
+      const rf=mulMV(Q,g.f).map(Math.round);let nf,nd;
+      if(near(g.d,rf)){nf=g.d;nd=g.f;}else{nf=g.f;nd=rf;}
+      const a=dot(g.P,cross(n,g.f)),b=dot(g.P,n);
+      let P=add(scl(cross(n,nf),a),scl(n,b));
+      P=mulMV(rot(nf,GEAR_SPIN*sense),P);
+      g.f=nf.slice();g.d=nd.slice();g.P=P;
+    }
+  }
+}
+function wholeRot(st,axisFace,sense){
+  const Q=rot(FACES[axisFace],-90*sense);
+  for(const c of st.corners){c.pos=mulMV(Q,c.pos).map(Math.round);c.R=mulMM(Q,c.R);}
+  for(const e of st.ecs){e.dir=ecSlotByDir(mulMV(Q,e.dir)).dir.slice();e.R=mulMM(Q,e.R);}
+  for(const g of st.gears){g.f=mulMV(Q,g.f).map(Math.round);g.d=mulMV(Q,g.d).map(Math.round);g.P=mulMV(Q,g.P);}
+}
+// q = einzelne Viertelumdrehung {face, prime}
+function applyQ(st,q){
+  if("xyz".includes(q.face))wholeRot(st,{x:"R",y:"U",z:"F"}[q.face],q.prime?-1:1);
+  else quarter(st,q.face,q.prime?-1:1);
+}
+function applyStep(st,step){for(const q of step.moves)applyQ(st,q);return st;}
+function applySteps(st,steps){for(const s of steps)applyStep(st,s);return st;}
+const invQ=qs=>qs.slice().reverse().map(q=>({face:q.face,prime:!q.prime}));
+
+// ---------- Makros ----------
+const DEFAULT_MACROS=`# Algorithmen aus der Maltese-Gear-Cube-Lösungsanleitung
+A  = R U R' U' R' F R F'
+A' = F R' F' R U R U' R'
+C  = L' U' L U L F' L' F
+C' = F' L F L' U' L' U L
+XL = R4 D R4 D' R4
+XR = R4 D' R4 D R4
+XB = R4 U2 R4 U'2 D R4 U2 R4 U'2 D'
+W  = (R4 U R4 U')3
+J  = R U R U R U' R' U' R' U'
+J' = U R U R U R' U' R' U' R'
+K  = L' U' L' U' L' U L U L U
+K' = U' L' U' L' U' L U L U L
+# eigene Makros, z. B.
+Sexy = R U R' U'
+`;
+let MACROS={}; // name -> Text
+function parseMacroText(txt){
+  const out={},errs=[];
+  txt.split(/\r?\n/).forEach((line,i)=>{
+    const l=line.replace(/#.*/,"").trim();if(!l)return;
+    const m=l.match(/^([A-Za-z]+)\s*(['’]?)\s*[=:]\s*(.*)$/);
+    if(!m){errs.push(`Zeile ${i+1}: erwartet „Name = Züge“`);return;}
+    const name=m[1]+(m[2]?"'":"");
+    if(/^[UDFBRLxyz]/.test(m[1])){errs.push(`Zeile ${i+1}: „${m[1]}“ darf nicht mit U, D, F, B, R, L, x, y, z beginnen`);return;}
+    out[name]=m[3];
+  });
+  return {macros:out,errs};
+}
+
+// ---------- Parser ----------
+// Ergebnis: Liste von Schritten {label, moves:[{face,prime}], macro?:{name,text}}
+function parse(str,stack=[]){
+  const s=str.replace(/[’‘`′´]/g,"'").replace(/\*/g,"");
+  const names=Object.keys(MACROS).map(n=>n.replace(/'$/,"")).filter((n,i,a)=>a.indexOf(n)===i).sort((a,b)=>b.length-a.length);
+  let i=0;
+  const mods=()=>{let prime=false,num="";while(i<s.length&&/['\d]/.test(s[i])){if(s[i]==="'")prime=!prime;else num+=s[i];i++;}return {prime,count:num?parseInt(num,10):1};};
+  function seq(depth){
+    const out=[];
+    while(i<s.length){
+      const ch=s[i];
+      if(/[\s,;.]/.test(ch)){i++;continue;}
+      if(ch==="("){i++;const inner=seq(depth+1);
+        if(s[i]!==")")throw new Error("Fehlende schließende Klammer");
+        i++;const {prime,count}=mods();
+        let body=inner;if(prime)body=inner.slice().reverse().map(invertStep);
+        for(let k=0;k<count;k++)out.push(...body.map(st=>({...st})));continue;}
+      if(ch===")"){if(depth===0)throw new Error("Unerwartete „)“ an Position "+(i+1));return out;}
+      const name=names.find(n=>s.startsWith(n,i));
+      if(name){i+=name.length;const {prime,count}=mods();
+        if(count===0)continue;
+        let base,txt;
+        if(prime&&MACROS[name+"'"]!==undefined){txt=MACROS[name+"'"];base=expandMacro(name+"'",stack);}
+        else{txt=MACROS[name];base=expandMacro(name,stack);if(prime)base=invQ(base);}
+        const moves=[];for(let k=0;k<count;k++)moves.push(...base);
+        out.push({label:name+(count!==1?count:"")+(prime?"'":""),moves,macro:{name,count,prime,text:txt}});
+        continue;}
+      if(/[UDFBRLxyz]/.test(ch)){i++;const {prime,count}=mods();
+        if(count>0)out.push({label:ch+(count!==1?count:"")+(prime?"'":""),moves:Array.from({length:count},()=>({face:ch,prime}))});
+        continue;}
+      throw new Error("Unbekanntes Zeichen „"+ch+"“ an Position "+(i+1));
+    }
+    if(depth>0)throw new Error("Fehlende schließende Klammer");
+    return out;
+  }
+  return seq(0);
+}
+function expandMacro(name,stack){
+  if(stack.includes(name))throw new Error("Makro „"+name+"“ ruft sich selbst auf");
+  let steps;
+  try{steps=parse(MACROS[name],[...stack,name]);}catch(e){throw new Error(e.message.startsWith("Makro")?e.message:`Makro „${name}“: ${e.message}`);}
+  return steps.flatMap(st=>st.moves);
+}
+function invertStep(st){
+  if(st.macro){const m=st.macro,p=!m.prime;return {label:m.name+(m.count!==1?m.count:"")+(p?"'":""),moves:invQ(st.moves),macro:{...m,prime:p}};}
+  const q=st.moves[0];const p=!q.prime;
+  return {label:q.face+(st.moves.length!==1?st.moves.length:"")+(p?"'":""),moves:invQ(st.moves)};
+}
+const qLabel=q=>q.face+(q.prime?"'":"");
+// Einzelzüge eines aufgelösten Makros wieder zu R2, R4 … zusammenfassen
+function compress(qs){const out=[];for(const q of qs){const l=out[out.length-1];
+  if(l&&l.moves[0].face===q.face&&l.moves[0].prime===q.prime){l.moves.push(q);l.label=q.face+l.moves.length+(q.prime?"'":"");}
+  else out.push({label:qLabel(q),moves:[q]});}return out;}
+
+// ---------- Auswertung pro Slot ----------
+function homeFace(R,p){const h=mulMV(tr(R),p);let k=0;for(let i=1;i<3;i++)if(Math.abs(h[i])>Math.abs(h[k]))k=i;
+  const v=[0,0,0];v[k]=Math.sign(h[k]);return letter(v);}
+function index(st){
+  const corner={},ec={},gear={};
+  for(const c of st.corners)corner[SLOTS.corners.find(s=>near(s.pos,c.pos)).name]=c;
+  for(const e of st.ecs)ec[ecSlotByDir(e.dir).name]=e;
+  for(const g of st.gears)gear[letter(g.f)+letter(g.d)]=g;
+  return {corner,ec,gear};
+}
+const gearQuarter=g=>{const a=Math.atan2(dot(g.P,cross(g.f,g.d)),dot(g.P,g.d));return ((Math.round(a/(Math.PI/2))%4)+4)%4;};
+function cornerTwist(c){
+  const ud=[0,Math.sign(c.pos[1]),0],h=mulMV(tr(c.R),ud);
+  const hs=SLOTS.corners.find(s=>s.name===c.id).pos;
+  const n0=[0,hs[1],0],o=[[hs[0],0,0],[0,0,hs[2]]];
+  const [n1,n2]=dot(cross(n0,o[0]),o[1])>0?o:[o[1],o[0]];
+  return [n0,n1,n2].findIndex(v=>dot(v,h)>0.9);
+}
+const rKey=R=>R.flat().map(x=>Math.round(x*1000)).join(",");
+function signature(ix){
+  const sig={};
+  for(const s in ix.corner)sig["c"+s]=ix.corner[s].id+"|"+rKey(ix.corner[s].R);
+  for(const s in ix.ec)sig["e"+s]=ix.ec[s].id+"|"+rKey(ix.ec[s].R);
+  for(const s in ix.gear)sig["g"+s]=ix.gear[s].id+"|"+gearQuarter(ix.gear[s]);
+  return sig;
+}
+
+// ---------- SVG-Darstellung ----------
+// Jede Seite wird in lokalen Koordinaten u,v ∈ [-1,1] gezeichnet (u nach rechts, v nach unten).
+const FS=150,GAP=8,PAD=8;
+const f2=n=>(+n.toFixed(4)).toString();
+const pts=a=>a.map(([u,v])=>f2(u)+","+f2(v)).join(" ");
+const P3=(face,u,v)=>{const[r,d]=FRAME[face];return add(FACES[face],add(scl(r,u),scl(d,v)));};
+const localDir=(face,vec)=>{const[r,d]=FRAME[face];return[dot(vec,r),dot(vec,d)];};
+const rect=(u0,v0,u1,v1)=>[[u0,v0],[u1,v0],[u1,v1],[u0,v1]];
+const NS='vector-effect="non-scaling-stroke"';
+// Maße in Seitenkoordinaten (Halbe Kantenlänge = 1), vermessen an Produktfotos
+const CEN=0.058, EDGE_W=0.077, EDGE_H=0.047, EDGE_POS=0.93, GEAR_DRAW=0.424, HOLE0=0.56, HOLE1=0.92;
+const RIM="#5b5b60", RIM_W=0.016;
+const STICK=(fill)=>`fill="${fill}" stroke="${RIM}" stroke-width="${RIM_W}" stroke-linejoin="round"`;
+// Kanten-Plättchen in Richtung (du,dv)
+function stubRect(du,dv){const a=du?EDGE_H:EDGE_W,b=du?EDGE_W:EDGE_H,cx=du*EDGE_POS,cy=dv*EDGE_POS;return rect(cx-a,cy-b,cx+a,cy+b);}
+// Konturen automatisch aus einer Frontalaufnahme des Originals abgepaust
+// (Mittelung über die vier symmetrischen Kopien einer Fläche, Seitenkoordinaten mit halber Kantenlänge = 1).
+// Eckstern im Viertel oben links; die anderen Viertel entstehen durch Drehung um 90°, 180°, 270°.
+const STAR_TL="M-0.474,-0.909L-0.475,-0.895L-0.48,-0.884L-0.475,-0.863L-0.478,-0.861L-0.475,-0.847L-0.478,-0.837L-0.475,-0.763L-0.478,-0.761L-0.475,-0.758L-0.472,-0.618L-0.47,-0.616L-0.472,-0.576L-0.47,-0.574L-0.467,-0.521L-0.47,-0.495L-0.48,-0.468L-0.5,-0.449L-0.534,-0.436L-0.597,-0.436L-0.6,-0.433L-0.603,-0.436L-0.629,-0.433L-0.639,-0.436L-0.689,-0.43L-0.739,-0.43L-0.742,-0.433L-0.8,-0.43L-0.805,-0.433L-0.811,-0.428L-0.813,-0.43L-0.816,-0.428L-0.818,-0.43L-0.829,-0.428L-0.837,-0.43L-0.879,-0.428L-0.882,-0.43L-0.884,-0.428L-0.926,-0.428L-0.936,-0.424L-0.936,-0.405L-0.93,-0.4L-0.932,-0.396L-0.908,-0.391L-0.892,-0.383L-0.878,-0.368L-0.87,-0.326L-0.846,-0.25L-0.849,-0.245L-0.841,-0.234L-0.841,-0.221L-0.833,-0.211L-0.82,-0.174L-0.789,-0.133L-0.784,-0.136L-0.782,-0.133L-0.764,-0.145L-0.764,-0.15L-0.751,-0.163L-0.741,-0.184L-0.722,-0.263L-0.725,-0.266L-0.717,-0.287L-0.714,-0.321L-0.707,-0.342L-0.695,-0.354L-0.668,-0.367L-0.647,-0.367L-0.632,-0.362L-0.608,-0.362L-0.529,-0.351L-0.511,-0.343L-0.497,-0.338L-0.475,-0.311L-0.475,-0.297L-0.47,-0.289L-0.467,-0.261L-0.457,-0.221L-0.459,-0.216L-0.451,-0.203L-0.443,-0.168L-0.433,-0.142L-0.429,-0.138L-0.418,-0.138L-0.407,-0.155L-0.399,-0.187L-0.399,-0.2L-0.388,-0.237L-0.386,-0.284L-0.372,-0.326L-0.35,-0.349L-0.339,-0.354L-0.292,-0.364L-0.274,-0.364L-0.253,-0.372L-0.192,-0.386L-0.174,-0.393L-0.167,-0.405L-0.176,-0.417L-0.187,-0.422L-0.303,-0.446L-0.324,-0.446L-0.358,-0.459L-0.375,-0.476L-0.383,-0.495L-0.391,-0.537L-0.391,-0.561L-0.396,-0.566L-0.396,-0.582L-0.401,-0.589L-0.404,-0.616L-0.404,-0.65L-0.396,-0.668L-0.384,-0.68L-0.368,-0.688L-0.366,-0.686L-0.334,-0.696L-0.316,-0.696L-0.308,-0.701L-0.305,-0.699L-0.292,-0.707L-0.276,-0.707L-0.268,-0.714L-0.229,-0.725L-0.192,-0.746L-0.18,-0.758L-0.18,-0.771L-0.216,-0.799L-0.245,-0.812L-0.263,-0.814L-0.271,-0.82L-0.282,-0.82L-0.311,-0.83L-0.387,-0.843L-0.418,-0.854L-0.436,-0.868L-0.438,-0.884L-0.446,-0.897L-0.458,-0.909Z";
+// Zahnrad um die Achse zentriert; +x = Ausrichtung (gelöst: zur Würfelkante hin).
+const GEAR_PATH="M0.195,-0.225L0.158,-0.217L0.142,-0.209L0.132,-0.209L0.103,-0.191L0.097,-0.191L0.082,-0.178L0.067,-0.161L0.064,-0.145L0.057,-0.132L0.036,-0.071L0.026,-0.062L0.018,-0.059L-0.005,-0.062L-0.039,-0.054L-0.046,-0.061L-0.051,-0.076L-0.062,-0.084L-0.072,-0.105L-0.075,-0.118L-0.093,-0.15L-0.116,-0.164L-0.124,-0.164L-0.137,-0.172L-0.182,-0.172L-0.187,-0.175L-0.207,-0.153L-0.204,-0.126L-0.199,-0.111L-0.191,-0.092L-0.171,-0.067L-0.126,-0.051L-0.113,-0.043L-0.082,-0.036L-0.07,-0.024L-0.067,-0.016L-0.07,-0.005L-0.067,0.026L-0.064,0.029L-0.067,0.037L-0.079,0.046L-0.087,0.046L-0.103,0.059L-0.155,0.083L-0.175,0.105L-0.186,0.134L-0.188,0.176L-0.176,0.193L-0.163,0.193L-0.161,0.191L-0.15,0.193L-0.108,0.18L-0.095,0.172L-0.08,0.158L-0.062,0.108L-0.057,0.103L-0.041,0.066L-0.034,0.059L-0.021,0.062L0.032,0.059L0.046,0.074L0.088,0.155L0.108,0.175L0.161,0.199L0.203,0.204L0.205,0.207L0.229,0.207L0.233,0.203L0.233,0.195L0.238,0.189L0.238,0.168L0.236,0.166L0.238,0.155L0.233,0.147L0.23,0.126L0.212,0.095L0.2,0.083L0.195,0.083L0.187,0.072L0.168,0.07L0.161,0.064L0.121,0.054L0.116,0.049L0.076,0.038L0.064,0.024L0.067,-0.008L0.062,-0.024L0.064,-0.034L0.074,-0.043L0.084,-0.046L0.1,-0.057L0.118,-0.062L0.124,-0.067L0.132,-0.067L0.155,-0.08L0.179,-0.088L0.207,-0.116L0.217,-0.139L0.22,-0.153L0.217,-0.161L0.222,-0.166L0.222,-0.187L0.225,-0.189L0.222,-0.203L0.217,-0.211L0.205,-0.222Z";
+// Pixelstufen der abgepausten Konturen glätten (Laplace-Glättung) und als weiche Kurve ausgeben
+function smoothPath(d,iter=2){
+  let p=d.replace(/[MZ]/g,"").split("L").map(s=>s.split(",").map(Number));
+  for(let k=0;k<iter;k++)p=p.map((q,i)=>{const a=p[(i+p.length-1)%p.length],b=p[(i+1)%p.length];return[(a[0]+2*q[0]+b[0])/4,(a[1]+2*q[1]+b[1])/4];});
+  const mid=(a,b)=>[(a[0]+b[0])/2,(a[1]+b[1])/2],n=p.length;
+  let s="M"+mid(p[n-1],p[0]).map(f2).join(",");
+  for(let i=0;i<n;i++)s+="Q"+p[i].map(f2).join(",")+" "+mid(p[i],p[(i+1)%n]).map(f2).join(",");
+  return s+"Z";
+}
+const STAR_D=smoothPath(STAR_TL),GEAR_D=smoothPath(GEAR_PATH);
+function cellsOf(R0){ // Zerlegung in Teilflächen zum Einfärben (Mixup: Teile können zweifarbig erscheinen)
+  const xs=R0.map(p=>p[0]),ys=R0.map(p=>p[1]),u0=Math.min(...xs),u1=Math.max(...xs),v0=Math.min(...ys),v1=Math.max(...ys);
+  const cu=(u0+u1)/2,cv=(v0+v1)/2,ring=[[u0,v0],[cu,v0],[u1,v0],[u1,cv],[u1,v1],[cu,v1],[u0,v1],[u0,cv]];
+  return ring.map((p,i)=>[[cu,cv],p,ring[(i+1)%8]]);
+}
+const centroid=p=>[p.reduce((s,q)=>s+q[0],0)/p.length,p.reduce((s,q)=>s+q[1],0)/p.length];
+let clipSeq=0;
+function paintCells(face,region,R){
+  const id="cl"+(clipSeq++),[[a,b],,[c,d]]=region,w=c-a,h=d-b,r=Math.min(w,h)*0.18;
+  const box=`x="${f2(a)}" y="${f2(b)}" width="${f2(w)}" height="${f2(h)}" rx="${f2(r)}"`;
+  let s=`<clipPath id="${id}"><rect ${box}/></clipPath><g clip-path="url(#${id})">`;
+  for(const cc of cellsOf(region)){const[u,v]=centroid(cc),col=FACE_COLOR(homeFace(R,P3(face,u,v)));
+    s+=`<polygon points="${pts(cc)}" fill="${col}" stroke="${col}" stroke-width="0.004"/>`;}
+  return s+`</g><rect ${box} fill="none" stroke="${RIM}" stroke-width="${RIM_W}"/>`;
+}
+function centerMechanism(){ // sichtbare Mechanik in der Mitte (wie am Original)
+  let s=`<g fill="#26262a" stroke="#34343a" stroke-width="0.008">`;
+  s+=`<rect x="-0.2" y="-0.022" width="0.4" height="0.044" rx="0.01"/><rect x="-0.022" y="-0.2" width="0.044" height="0.4" rx="0.01"/>`;
+  for(const[a,b]of[[0.15,0],[-0.15,0],[0,0.15],[0,-0.15]])s+=`<circle cx="${a}" cy="${b}" r="0.03"/>`;
+  for(const[a,b]of[[1,1],[1,-1],[-1,1],[-1,-1]])s+=`<path d="M${f2(a*0.08)},${f2(b*0.13)}L${f2(a*0.13)},${f2(b*0.08)}L${f2(a*0.17)},${f2(b*0.15)}Z"/>`;
+  return s+`</g>`;
+}
+function render(st,opts={}){
+  const ix=index(st),W=PAD*2+3*FS+2*GAP,H=PAD*2+4*FS+3*GAP,marker=!!opts.markers;
+  const changed=opts.changed||new Set(),mv=opts.nextMove;
+  const nAx=mv&&!"xyz".includes(mv.face)?FACES[mv.face]:null;
+  const half=p=>nAx&&dot(p,nAx)>EPS, onRing=p=>nAx&&Math.abs(dot(p,nAx))<EPS;
+  const OUT_CH=`fill="none" stroke="var(--accent)" stroke-width="2" stroke-opacity=".85" ${NS}`,OUT_RING=`fill="none" stroke="var(--ring)" stroke-width="2" stroke-dasharray="5 3" ${NS}`,OUT_HALF=`fill="none" stroke="var(--ring)" stroke-width="2" stroke-opacity=".75" ${NS}`;
+  const mark=(key,p3,shape)=>(changed.has(key)?shape(OUT_CH):"")+(onRing(p3)?shape(OUT_RING):half(p3)?shape(OUT_HALF):"");
+  let s=`<svg class="cube" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg"><defs>
+    <radialGradient id="gHole" cx="50%" cy="50%" r="60%"><stop offset="0" stop-color="#000"/><stop offset=".7" stop-color="#151517"/><stop offset="1" stop-color="#2c2c30"/></radialGradient>
+    <linearGradient id="gBody" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#1b1b1e"/><stop offset="1" stop-color="#0a0a0b"/></linearGradient></defs>`;
+  for(const face of ORDER){
+    const[col,row]=NETPOS[face],tx=PAD+col*(FS+GAP)+FS/2,ty=PAD+row*(FS+GAP)+FS/2;
+    let g=`<g transform="translate(${tx},${ty}) scale(${FS/2})">`,ov="";
+    g+=`<rect x="-1" y="-1" width="2" height="2" rx="0.05" fill="url(#gBody)" stroke="#2e2e33" stroke-width="0.012"/>`;
+    g+=centerMechanism();
+    // Ecken: Sterne mit hohler Würfelecke
+    for(const su of[-1,1])for(const sv of[-1,1]){
+      const p3=P3(face,su,sv),slot=SLOTS.corners.find(c=>near(c.pos,p3.map(Math.sign)));
+      const c=ix.corner[slot.name],colr=FACE_COLOR(homeFace(c.R,P3(face,su*0.5,sv*0.5)));
+      const hx=su>0?HOLE0:-HOLE1,hy=sv>0?HOLE0:-HOLE1,hw=HOLE1-HOLE0;
+      g+=`<rect x="${f2(hx)}" y="${f2(hy)}" width="${f2(hw)}" height="${f2(hw)}" rx="0.06" fill="url(#gHole)" stroke="#3a3a40" stroke-width="0.012"/>`;
+      g+=`<path d="${STAR_D}" transform="rotate(${{"-1,-1":0,"1,-1":90,"1,1":180,"-1,1":270}[su+","+sv]})" ${STICK(colr)}/>`;
+      ov+=mark("c"+slot.name,slot.pos,a=>`<rect x="${su>0?0.08:-0.97}" y="${sv>0?0.08:-0.97}" width="0.89" height="0.89" rx="0.05" ${a}/>`);
+    }
+    // Mitte
+    const cs=SLOTS.ecs.find(e=>e.name===face),ce=ix.ec[face];
+    g+=paintCells(face,rect(-CEN,-CEN,CEN,CEN),ce.R);
+    if(marker&&ce.type==="center"&&Math.abs(dot(mulMV(ce.R,FACES[ce.id]),FACES[face]))>0.9){
+      const[du,dv]=localDir(face,mulMV(ce.R,FRAME[ce.id][1]));
+      if(Math.hypot(du,dv)>0.9){const t=[du*0.05,dv*0.05],l=[du*0.0-dv*0.03,dv*0.0+du*0.03],r=[du*0.0+dv*0.03,dv*0.0-du*0.03];
+        g+=`<polygon points="${pts([t,l,r])}" fill="#000" opacity=".55"/>`;}
+    }
+    ov+=mark("e"+face,cs.dir,a=>`<rect x="${-CEN-0.04}" y="${-CEN-0.04}" width="${2*CEN+0.08}" height="${2*CEN+0.08}" rx="0.03" ${a}/>`);
+    // Kanten-Plättchen und Zahnräder
+    for(const nb of ORDER){const nv=FACES[nb];if(Math.abs(dot(nv,FACES[face]))>EPS)continue;
+      const[du,dv]=localDir(face,nv).map(Math.round);
+      const en=edgeName(face,nb),es=SLOTS.ecs.find(e=>e.name===en),sr=stubRect(du,dv);
+      g+=paintCells(face,sr,ix.ec[en].R);
+      ov+=mark("e"+en,es.dir,a=>`<rect x="${f2(sr[0][0]-0.035)}" y="${f2(sr[0][1]-0.035)}" width="${f2(sr[2][0]-sr[0][0]+0.07)}" height="${f2(sr[2][1]-sr[0][1]+0.07)}" rx="0.03" ${a}/>`);
+      const gn=face+nb,gp=ix.gear[gn],[pu,pv]=localDir(face,gp.P),ang=Math.atan2(pv,pu)*180/Math.PI;
+      const gx=du*GEAR_DRAW,gy=dv*GEAR_DRAW,gc=FACE_COLOR(gp.id[0]);
+      g+=`<g transform="translate(${f2(gx)},${f2(gy)}) rotate(${f2(ang)})"><path d="${GEAR_D}" ${STICK(gc)}/>`;
+      if(marker)g+=`<circle cx="0.13" cy="0" r="0.03" fill="#fff" stroke="#000" stroke-width="1" ${NS}/>`;
+      g+=`</g>`;
+      ov+=mark("g"+gn,add(FACES[face],scl(nv,GEAR_R)),a=>`<circle cx="${f2(gx)}" cy="${f2(gy)}" r="0.27" ${a}/>`);
+    }
+    g+=`<text x="${-HOLE1+0.06}" y="${-HOLE1+0.17}" font-size="0.14" font-weight="700" fill="#9a9aa0" font-family="system-ui">${face}</text>`;
+    s+=g+ov+`</g>`;
+  }
+  return s+"</svg>";
+}
+
+// ---------- Unterschiede ----------
+function cycles(before,after){
+  const where={};for(const s in after)where[after[s].id]=s;
+  const seen=new Set(),out=[];
+  for(const s in before){if(seen.has(s))continue;const cyc=[];let cur=s;
+    while(!seen.has(cur)){seen.add(cur);cyc.push(cur);cur=where[before[cur].id];}
+    out.push(cyc);}
+  return out;
+}
+function describeDiff(st0,st1){
+  const a=index(st0),b=index(st1),lines=[];
+  const fmt=(title,items)=>{if(items.length)lines.push(`<b>${title}</b>\n`+items.join("\n"));};
+  const gi=[];
+  for(const cyc of cycles(a.gear,b.gear)){
+    const rots=cyc.map(s=>{const p=a.gear[s],q=Object.values(b.gear).find(x=>x.id===p.id);return ((gearQuarter(q)-gearQuarter(p))%4+4)%4;});
+    if(cyc.length===1&&rots[0]===0)continue;
+    const r=cyc.map((s,i)=>rots[i]?`${s}(+${rots[i]*90}°)`:s);
+    gi.push(cyc.length===1?`  ${r[0]} dreht sich auf der Stelle`:"  "+r.join(" → ")+" → "+cyc[0]);
+  }
+  fmt("Zahnräder (Winkel = Eigendrehung gegen den Uhrzeigersinn)",gi);
+  const ci=[];
+  for(const cyc of cycles(a.corner,b.corner)){
+    const tw=cyc.map(s=>{const p=a.corner[s],q=Object.values(b.corner).find(x=>x.id===p.id);return ((cornerTwist(q)-cornerTwist(p))%3+3)%3;});
+    if(cyc.length===1&&tw[0]===0)continue;
+    const r=cyc.map((s,i)=>s+(tw[i]?(tw[i]===1?"↻":"↺"):""));
+    ci.push(cyc.length===1?`  ${r[0]} verdreht`:"  "+r.join(" → ")+" → "+cyc[0]);
+  }
+  fmt("Ecken",ci);
+  const ei=[];
+  for(const cyc of cycles(a.ec,b.ec)){
+    if(cyc.length===1){const s=cyc[0];if(rKey(a.ec[s].R)===rKey(b.ec[s].R))continue;
+      const p=a.ec[s],q=b.ec[s];
+      if(p.type==="center"&&SLOTS.ecs.find(e=>e.name===s).type==="center"){
+        const n=FACES[s],m0=mulMV(p.R,FRAME[p.id][1]),m1=mulMV(q.R,FRAME[q.id][1]);
+        const ang=Math.round(Math.atan2(dot(cross(m0,m1),n),dot(m0,m1))*180/Math.PI);
+        ei.push(`  ${s} auf der Stelle gedreht (${ang>0?"+":""}${ang}°)`);
+      }else ei.push(`  ${s} auf der Stelle gedreht/gekippt`);
+      continue;}
+    ei.push("  "+cyc.join(" → ")+" → "+cyc[0]);
+  }
+  fmt("Kanten & Mitten",ei);
+  return lines.length?lines.join("\n\n"):"Keine Veränderung – die Zugfolge ist (für diese Stellung) die Identität.";
+}
+
+// ---------- UI ----------
+const $=id=>document.getElementById(id);
+let steps=[],states=[],cur=0,timer=null,before=null;
+const store={get(k){try{return localStorage.getItem(k);}catch(e){return null;}},set(k,v){try{localStorage.setItem(k,v);}catch(e){}}};
+function loadMacros(txt){
+  const {macros,errs}=parseMacroText(txt);MACROS=macros;
+  // Makros auf Fehler prüfen
+  for(const n in MACROS){try{expandMacro(n,[]);}catch(e){errs.push(e.message);}}
+  $("macroErr").textContent=errs.join("\n");
+  $("macroPad").innerHTML=Object.keys(MACROS).map(n=>`<button data-m="${n}" title="${MACROS[n].replace(/"/g,"&quot;")}">${n}</button>`).join("");
+}
+function compute(){
+  $("err").textContent="";
+  let setup,alg;
+  try{setup=parse($("setup").value);}catch(e){$("err").textContent="Setup: "+e.message;return;}
+  try{alg=parse($("alg").value);}catch(e){$("err").textContent="Zugfolge: "+e.message;return;}
+  steps=$("expand").checked?alg.flatMap(st=>st.macro?compress(st.moves).map((x,i,arr)=>({...x,from:st.label,first:i===0})):[st]):alg;
+  before=applySteps(solved(),setup);states=[clone(before)];
+  for(const st of steps)states.push(applyStep(clone(states[states.length-1]),st));
+  cur=Math.min(cur,steps.length);
+  store.set("mgc",JSON.stringify({setup:$("setup").value,alg:$("alg").value}));
+  draw();
+}
+function draw(){
+  const after=states[states.length-1],mk=$("markers").checked;
+  const sa=signature(index(before)),sb=signature(index(after)),ch=new Set(Object.keys(sa).filter(k=>sa[k]!==sb[k]));
+  const nq=steps[cur]?steps[cur].moves[0]:null;
+  $("netBefore").innerHTML=render(before,{markers:mk});
+  $("netAfter").innerHTML=render(after,{changed:ch,markers:mk});
+  $("netStep").innerHTML=render(states[cur],{nextMove:nq,markers:mk});
+  $("lblBefore").textContent=$("setup").value.trim()||"gelöst";
+  const nQ=steps.reduce((n,s)=>n+s.moves.length,0);
+  $("lblAfter").textContent=`${steps.length} Schritte · ${nQ} Vierteldrehungen`;
+  $("lblStep").textContent=`${cur}/${steps.length}`+(steps[cur]?` · nächster: ${steps[cur].label}${steps[cur].from?" (aus "+steps[cur].from+")":""}`:"");
+  $("chips").innerHTML=steps.map((m,i)=>(m.first?`<span class="lbl" style="margin:4px 0 0 4px">${m.from}:</span>`:"")+
+    `<span class="chip ${m.macro?"macro":""} ${i<cur?"done":""} ${i===cur?"cur":""}" data-i="${i}" title="${m.macro?m.macro.text.replace(/"/g,"&quot;"):""}">${m.label}</span>`).join("")
+    +`<span class="chip ${cur===steps.length?"cur":""}" data-i="${steps.length}">Ende</span>`;
+  $("diff").innerHTML=describeDiff(before,after);
+}
+$("chips").addEventListener("click",e=>{const i=e.target.dataset.i;if(i!==undefined){cur=+i;draw();}});
+$("apply").onclick=()=>{cur=0;compute();};
+for(const id of["setup","alg"])$(id).addEventListener("keydown",e=>{if(e.key==="Enter"){cur=0;compute();}});
+$("expand").onchange=()=>{cur=0;compute();};
+$("markers").onchange=draw;
+$("first").onclick=()=>{cur=0;draw();};
+$("last").onclick=()=>{cur=steps.length;draw();};
+$("prev").onclick=()=>{if(cur>0){cur--;draw();}};
+$("next").onclick=()=>{if(cur<steps.length){cur++;draw();}};
+$("play").onclick=()=>{
+  if(timer){clearInterval(timer);timer=null;$("play").textContent="▶ Abspielen";return;}
+  if(cur>=steps.length)cur=0;$("play").textContent="⏸ Pause";
+  timer=setInterval(()=>{if(cur>=steps.length){clearInterval(timer);timer=null;$("play").textContent="▶ Abspielen";return;}cur++;draw();},700);draw();
+};
+$("invert").onclick=()=>{try{$("alg").value=parse($("alg").value).reverse().map(invertStep).map(m=>m.label).join(" ");cur=0;compute();}catch(e){$("err").textContent=e.message;}};
+$("theme").onclick=()=>{const r=document.documentElement,dark=r.dataset.theme?r.dataset.theme==="dark":matchMedia("(prefers-color-scheme: dark)").matches;r.dataset.theme=dark?"light":"dark";};
+$("pad").innerHTML=["R","L","U","D","F","B"].flatMap(f=>[f,f+"'",f+"2",f+"4"]).concat(["x","y","z"]).map(m=>`<button data-m="${m}">${m}</button>`).join("")+`<button data-m="undo" title="letzten Schritt entfernen">⌫</button>`;
+function padClick(e){const m=e.target.dataset.m;if(!m)return;
+  if(m==="undo"){try{const s=parse($("alg").value);s.pop();$("alg").value=s.map(x=>x.label).join(" ");}catch(err){}}
+  else $("alg").value=($("alg").value.trim()+" "+m).trim();
+  compute();cur=steps.length;draw();}
+$("pad").addEventListener("click",padClick);
+$("macroPad").addEventListener("click",padClick);
+$("macroApply").onclick=()=>{store.set("mgcMacros",$("macros").value);loadMacros($("macros").value);compute();};
+$("macroReset").onclick=()=>{$("macros").value=DEFAULT_MACROS;$("macroApply").click();};
+document.addEventListener("keydown",e=>{if(/INPUT|TEXTAREA/.test(e.target.tagName))return;if(e.key==="ArrowRight")$("next").click();if(e.key==="ArrowLeft")$("prev").click();});
+$("macros").value=store.get("mgcMacros")||DEFAULT_MACROS;
+loadMacros($("macros").value);
+try{const saved=JSON.parse(store.get("mgc")||"null");if(saved){$("setup").value=saved.setup;$("alg").value=saved.alg;}}catch(e){}
+compute();
+window.MGC={solved,parse,applySteps,index,describeDiff};
+</script>
+</body>
+</html>
