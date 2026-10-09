@@ -129,10 +129,16 @@ Changed pieces are found by comparing `signature()` of the before and after stat
 ### 3D view and animation (`cube3d.js`)
 
 The 3D scene is rebuilt from the simulation state, piece by piece: each corner is an
-octant-shaped body with the hollow corner cut out plus its three star stickers; gears and
-edge/center stickers are thin extruded plates using the same traced outlines and the same
-colour sampling as the 2D net (three.js `ExtrudeGeometry`, quadratic curves through the
-smoothed points). Every piece is its own `THREE.Group`, so a move can transform it freely.
+octant-shaped body with the hollow corner cut out plus its three star stickers, leaving the
+three middle rings free; gears are thin extruded plates using the traced outlines (three.js
+`ExtrudeGeometry`, quadratic curves through the smoothed points). A fixed black sphere
+represents the core. Every piece is its own `THREE.Group`, so a move can transform it freely.
+
+Edges and centers are rigid blocks inside the middle ring. Each one is built in its solved
+pose (with its stickers) and then transformed by its rotation matrix `R` from the simulation.
+So an edge sitting in a center slot sticks out of the face as a ridge, and a center sitting
+in an edge slot lies recessed – exactly like on the real puzzle. (The 2D net shows the same
+situation as a two-coloured sticker.)
 
 A step is animated one quarter turn at a time. For each quarter turn the state before and
 after is known, and every piece gets a motion function of t ∈ [0, 1]:

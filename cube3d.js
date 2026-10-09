@@ -6,7 +6,8 @@ const Cube3D=(()=>{
   let renderer=null,scene,camera,world,container,pieces=[],shown=null;
   let yaw=0.62,pitch=0.52,dist=6.4,needRender=false,anim=null;
   const DEF={yaw:0.62,pitch:0.52,dist:6.4};
-  const SURF=1.0,LIFT=0.004,THICK=0.03,GAP=0.012;
+  const SURF=1.0,LIFT=0.004,THICK=0.03;
+  const RING_W=0.12,RING_IN=0.6,CORE_R=0.62; // halbe Breite des Mittelrings, Innenkante der Ringsteine, Kern
 
   // ---------- Materialien ----------
   const mats={};
@@ -49,7 +50,8 @@ const Cube3D=(()=>{
     // Oktant ohne die hohle Würfelecke: drei Quader
     const B=(a0,a1,b0,b1,c0,c1,m)=>{const iv=(s,p,q)=>s>0?[p,q]:[-q,-p];
       const[X0,X1]=iv(sx,a0,a1),[Y0,Y1]=iv(sy,b0,b1),[Z0,Z1]=iv(sz,c0,c1);g.add(box(X0,X1,Y0,Y1,Z0,Z1,m));};
-    B(GAP,N,GAP,1,GAP,1,BODY);B(N,1,GAP,N,GAP,1,BODY);B(N,1,N,1,GAP,N,BODY);
+    // Ecken lassen die drei Mittelringe (|x|,|y|,|z| < RING_W) frei
+    B(RING_W,N,RING_W,1,RING_W,1,BODY);B(N,1,RING_W,N,RING_W,1,BODY);B(N,1,N,1,RING_W,N,BODY);
     B(N,N+0.02,N,1,N,1,HOLE);B(N,1,N,N+0.02,N,1,HOLE);B(N,1,N,1,N,N+0.02,HOLE); // dunkle Innenseiten der Öffnung
     for(const face of ORDER){const n=FACES[face];if(dot(n,c.pos)<=0.5)continue;
       const[r,d]=FRAME[face],su=Math.sign(dot(c.pos,r)),sv=Math.sign(dot(c.pos,d));
@@ -59,15 +61,26 @@ const Cube3D=(()=>{
     }
     return g;
   }
-  function ecGroup(e,slot){
-    const g=new THREE.Group();
-    const faces=slot.type==="center"?[slot.name]:slot.name.split("");
-    for(const face of faces){
-      let region;
-      if(slot.type==="center")region=rect(-CEN,-CEN,CEN,CEN);
-      else{const nb=slot.name.replace(face,""),[du,dv]=localDir(face,FACES[nb]).map(Math.round);region=stubRect(du,dv);}
-      for(const cell of cellsOf(region)){const[u,v]=centroid(cell);g.add(plate(face,cell,faceMat(homeFace(e.R,P3(face,u,v))),false));}
+  // Kanten und Mitten sind starre Steine im Mittelring (Breite 2·RING_W quer zum Ring).
+  // Sie werden in ihrer gelösten Lage gebaut und dann mit ihrer Drehung R aus der Simulation
+  // transformiert. Eine Kante auf einem Mittenplatz ragt dadurch als Grat aus der Fläche,
+  // eine Mitte auf einem Kantenplatz liegt vertieft – wie beim Original.
+  function ecGroup(e){
+    const g=new THREE.Group(),home=e.id.split(""),lo=new THREE.Vector3(),hi=new THREE.Vector3();
+    for(let i=0;i<3;i++){
+      const f=home.map(k=>FACES[k]).find(v=>v[i]!==0);
+      if(f){const s=f[i];lo.setComponent(i,s>0?RING_IN:-1);hi.setComponent(i,s>0?1:-RING_IN);}
+      else{lo.setComponent(i,-RING_W);hi.setComponent(i,RING_W);}
     }
+    g.add(box(lo.x,hi.x,lo.y,hi.y,lo.z,hi.z,BODY));
+    for(const face of home){
+      let region;
+      if(home.length===1)region=rect(-CEN,-CEN,CEN,CEN);
+      else{const nb=home.find(k=>k!==face),[du,dv]=localDir(face,FACES[nb]).map(Math.round);region=stubRect(du,dv);}
+      g.add(plate(face,region,faceMat(face),false));
+    }
+    const R=e.R,m=new THREE.Matrix4().set(R[0][0],R[0][1],R[0][2],0,R[1][0],R[1][1],R[1][2],0,R[2][0],R[2][1],R[2][2],0,0,0,0,1);
+    g.children.forEach(c=>c.geometry.applyMatrix4(m));
     return g;
   }
   function gearGroup(gp){
@@ -80,7 +93,7 @@ const Cube3D=(()=>{
     for(const p of pieces){world.remove(p.group);p.group.traverse(o=>{if(o.geometry)o.geometry.dispose();});}
     pieces=[];
     for(const c of st.corners){const grp=cornerGroup(c);pieces.push({kind:"c",id:c.id,group:grp});world.add(grp);}
-    for(const e of st.ecs){const grp=ecGroup(e,ecSlotByDir(e.dir));pieces.push({kind:"e",id:e.id,group:grp});world.add(grp);}
+    for(const e of st.ecs){const grp=ecGroup(e);pieces.push({kind:"e",id:e.id,group:grp});world.add(grp);}
     for(const gp of st.gears){const grp=gearGroup(gp);pieces.push({kind:"g",id:gp.id,group:grp});world.add(grp);}
     shown=st;requestRender();
   }
@@ -166,6 +179,7 @@ const Cube3D=(()=>{
     renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});
     renderer.setPixelRatio(Math.min(2,window.devicePixelRatio||1));
     scene=new THREE.Scene();world=new THREE.Group();scene.add(world);
+    scene.add(new THREE.Mesh(new THREE.SphereGeometry(CORE_R,32,16),BODY)); // fester Kern
     camera=new THREE.PerspectiveCamera(35,1,0.1,100);
     scene.add(new THREE.HemisphereLight(0xffffff,0x444450,1.6));
     const d1=new THREE.DirectionalLight(0xffffff,2.2);d1.position.set(3,5,4);scene.add(d1);

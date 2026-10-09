@@ -3,6 +3,14 @@
 All notable changes to this project are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.2.1] – 2026-10-09
+
+### Fixed
+- 3D: edges and centers are now rigid blocks that always stay one piece. They no longer leave
+  the cube during the animation; an edge in a center slot protrudes as a ridge and a center
+  in an edge slot lies recessed, as on the real puzzle.
+- 3D: corner bodies leave the middle rings free; a fixed core fills the inside.
+
 ## [1.2.0] – 2026-10-09
 
 ### Added
