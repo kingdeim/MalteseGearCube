@@ -25,6 +25,8 @@
 body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif}
 main{max-width:none;margin:0;padding:20px 16px 48px}
 h1{font-size:22px;margin:0 0 4px}
+.top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+select{font:inherit;font-size:14px;padding:5px 8px;border-radius:8px;border:1px solid var(--line);background:var(--chip);color:var(--ink)}
 .sub{color:var(--muted);margin:0 0 18px;font-size:14px}
 .panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:16px}
 label,.lbl{display:block;font-size:13px;color:var(--muted);margin-bottom:4px}
@@ -42,7 +44,7 @@ button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
 @media (max-width:760px){.nets{grid-template-columns:1fr}}
 .nets .panel{padding:10px}
 .net h2{font-size:15px;margin:0 0 8px;display:flex;justify-content:space-between;gap:8px}
-.net h2 span{color:var(--muted);font-weight:400;font-family:ui-monospace,Consolas,monospace;font-size:13px;text-align:right}
+.net h2 span:not(.h){color:var(--muted);font-weight:400;font-family:ui-monospace,Consolas,monospace;font-size:13px;text-align:right}
 svg.cube{width:100%;height:auto;display:block}
 .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
 .chip{font:13px ui-monospace,Consolas,monospace;padding:4px 9px;border-radius:999px;background:var(--chip);border:1px solid var(--line);cursor:pointer}
@@ -64,78 +66,171 @@ details summary{cursor:pointer;color:var(--muted);font-size:14px}
 </head>
 <body>
 <main>
-  <h1>Maltese Gear Cube – Zugfolgen nachvollziehen</h1>
-  <p class="sub">Würfelnetz mit Ecken, Zahnrädern, Kanten und Mitten. Gib eine Ausgangsstellung und eine Zugfolge ein (auch mit Makros wie <code>W</code>, <code>J</code>, <code>XL</code>) und vergleiche vorher und nachher.</p>
+  <div class="top">
+    <h1 data-i18n="title"></h1>
+    <select id="lang" aria-label="Language">
+      <option value="de">Deutsch</option>
+      <option value="en">English</option>
+      <option value="es">Español</option>
+    </select>
+  </div>
+  <p class="sub" data-i18n-html="intro"></p>
 
   <section class="panel">
     <div class="inputs">
       <div>
-        <label for="setup">Ausgangsstellung (Setup-Züge, leer = gelöst)</label>
-        <input type="text" id="setup" placeholder="z. B. R U2 F'">
+        <label for="setup" data-i18n="setupLabel"></label>
+        <input type="text" id="setup" data-i18n-ph="setupPh">
       </div>
       <div>
-        <label for="alg">Zugfolge</label>
+        <label for="alg" data-i18n="algLabel"></label>
         <input type="text" id="alg" value="R3 B4">
       </div>
     </div>
     <div class="err" id="err"></div>
     <div class="row">
-      <button class="primary" id="apply">Anwenden</button>
-      <button id="first" title="Anfang">⏮</button>
-      <button id="prev">◀ Zurück</button>
-      <button id="next">Vor ▶</button>
-      <button id="last" title="Ende">⏭</button>
-      <button id="play">▶ Abspielen</button>
-      <button id="invert" title="Zugfolge invertieren">Invertieren</button>
-      <label class="chk"><input type="checkbox" id="expand"> Makros in Einzelzüge auflösen</label>
-      <label class="chk"><input type="checkbox" id="markers"> Hilfsmarken</label>
-      <button id="theme" title="Hell/Dunkel">◐</button>
+      <button class="primary" id="apply" data-i18n="apply"></button>
+      <button id="first" data-i18n-title="first">⏮</button>
+      <button id="prev" data-i18n="prev"></button>
+      <button id="next" data-i18n="next"></button>
+      <button id="last" data-i18n-title="last">⏭</button>
+      <button id="play"></button>
+      <button id="invert" data-i18n="invert" data-i18n-title="invertTitle"></button>
+      <label class="chk"><input type="checkbox" id="expand"> <span data-i18n="expand"></span></label>
+      <label class="chk"><input type="checkbox" id="markers"> <span data-i18n="markers"></span></label>
+      <button id="theme" data-i18n-title="theme">◐</button>
     </div>
     <div class="chips" id="chips"></div>
   </section>
 
   <section class="nets">
-    <div class="panel net"><h2>Vorher <span id="lblBefore"></span></h2><div id="netBefore"></div></div>
-    <div class="panel net"><h2>Schritt <span id="lblStep"></span></h2><div id="netStep"></div>
-      <div class="legend">Gestrichelt: Mittelring des nächsten Zugs (dreht 45° mit) · Hell umrandet: drehende Hälfte</div></div>
-    <div class="panel net"><h2>Nachher <span id="lblAfter"></span></h2><div id="netAfter"></div>
-      <div class="legend">Orange umrandet: Teile, die sich gegenüber „Vorher“ verändert haben</div></div>
+    <div class="panel net"><h2><span class="h" data-i18n="before"></span> <span id="lblBefore"></span></h2><div id="netBefore"></div></div>
+    <div class="panel net"><h2><span class="h" data-i18n="step"></span> <span id="lblStep"></span></h2><div id="netStep"></div>
+      <div class="legend" data-i18n="legendStep"></div></div>
+    <div class="panel net"><h2><span class="h" data-i18n="after"></span> <span id="lblAfter"></span></h2><div id="netAfter"></div>
+      <div class="legend" data-i18n="legendAfter"></div></div>
   </section>
 
   <div class="two">
     <section class="panel">
-      <span class="lbl">Zug anhängen</span>
+      <span class="lbl" data-i18n="addMove"></span>
       <div class="movepad" id="pad"></div>
-      <span class="lbl">Makro anhängen</span>
+      <span class="lbl" data-i18n="addMacro"></span>
       <div class="movepad" id="macroPad"></div>
-      <span class="lbl" style="margin-top:16px">Veränderungen (Vorher → Nachher)</span>
+      <span class="lbl" style="margin-top:16px" data-i18n="changes"></span>
       <pre class="diff" id="diff"></pre>
     </section>
     <section class="panel">
-      <label for="macros">Makros (eine Zeile pro Makro: <code>Name = Züge</code>, <code>#</code> = Kommentar)</label>
+      <label for="macros" data-i18n-html="macrosLabel"></label>
       <textarea id="macros" spellcheck="false"></textarea>
       <div class="err" id="macroErr"></div>
       <div class="row" style="margin-top:4px">
-        <button id="macroApply">Makros übernehmen</button>
-        <button id="macroReset">Standard wiederherstellen</button>
+        <button id="macroApply" data-i18n="macroApply"></button>
+        <button id="macroReset" data-i18n="macroReset"></button>
       </div>
-      <p class="legend">Ein Makro mit <code>'</code> (z. B. <code>W'</code>) wird automatisch invertiert, außer es ist eigens definiert (wie <code>A'</code>). Wiederholung mit Zahl: <code>J4</code>, <code>W2</code>. Makros dürfen andere Makros verwenden. Namen: nur Buchstaben, nicht mit U, D, F, B, R, L, x, y, z beginnend.</p>
+      <p class="legend" data-i18n-html="macroHelp"></p>
     </section>
   </div>
 
   <section class="panel help">
     <details>
-      <summary>Notation &amp; Modell</summary>
-      <p>Züge wie beim 2×2: <code>R L U D F B</code> = Viertelumdrehung der Hälfte im Uhrzeigersinn, <code>'</code> = gegen den Uhrzeigersinn, Zahl = Anzahl Viertelumdrehungen (<code>R3</code>, <code>R4</code>, <code>U'2</code>, <code>R2'</code>). Gruppen: <code>(R4 U R4 U')3</code>. Ganze Würfeldrehungen: <code>x y z</code>.</p>
-      <p>Mechanik-Modell: Jede Drehung einer Hälfte um 90° dreht den dazwischen liegenden Mittelring (4 Mitten, 4 Kanten, 8 Zahnräder) wie beim Mixup-Würfel um 45° mit. Darum ist <code>R4</code> nicht die Identität: Der Ring steht danach um 180° gedreht. Mitten und Kanten können dabei die Plätze tauschen. Ein Zahnrad wandert pro Zug eine Position weiter und dreht sich um 90° um die eigene Achse. Der weiße Punkt (Hilfsmarke, auf dem echten Würfel nicht vorhanden) zeigt seine Ausrichtung; gelöst zeigt er zur Würfelkante. Die Ecken verhalten sich wie beim 2×2.</p>
-      <p>Bezeichnungen: Zahnrad <code>UF</code> = auf der U-Seite, Richtung F. Kante <code>UF</code> = zwischen U und F. Mitte <code>U</code>.</p>
-      <p>Standard-Makros nach der Lösungsanleitung von Reddit/TwistyPuzzles (u. a. <code>W</code> tauscht F↔B und RF↔LB und dreht U, D um 90°).</p>
+      <summary data-i18n="helpTitle"></summary>
+      <p data-i18n-html="help1"></p>
+      <p data-i18n-html="help2"></p>
+      <p data-i18n-html="help3"></p>
+      <p data-i18n-html="help4"></p>
     </details>
   </section>
 </main>
 
 <script>
 "use strict";
+// ---------- Sprachen / i18n ----------
+const I18N={
+de:{
+  title:"Maltese Gear Cube – Zugfolgen nachvollziehen",
+  intro:"Würfelnetz mit Ecken, Zahnrädern, Kanten und Mitten. Gib eine Ausgangsstellung und eine Zugfolge ein (auch mit Makros wie <code>W</code>, <code>J</code>, <code>XL</code>) und vergleiche vorher und nachher.",
+  setupLabel:"Ausgangsstellung (Setup-Züge, leer = gelöst)", setupPh:"z. B. R U2 F'", algLabel:"Zugfolge",
+  apply:"Anwenden", first:"Anfang", prev:"◀ Zurück", next:"Vor ▶", last:"Ende", play:"▶ Abspielen", pause:"⏸ Pause",
+  invert:"Invertieren", invertTitle:"Zugfolge invertieren", expand:"Makros in Einzelzüge auflösen", markers:"Hilfsmarken", theme:"Hell/Dunkel",
+  before:"Vorher", step:"Schritt", after:"Nachher",
+  legendStep:"Gestrichelt: Mittelring des nächsten Zugs (dreht 45° mit) · Hell umrandet: drehende Hälfte",
+  legendAfter:"Orange umrandet: Teile, die sich gegenüber „Vorher“ verändert haben",
+  addMove:"Zug anhängen", addMacro:"Makro anhängen", changes:"Veränderungen (Vorher → Nachher)", undo:"letzten Schritt entfernen",
+  macrosLabel:"Makros (eine Zeile pro Makro: <code>Name = Züge</code>, <code>#</code> = Kommentar)",
+  macroApply:"Makros übernehmen", macroReset:"Standard wiederherstellen",
+  macroHelp:"Ein Makro mit <code>'</code> (z. B. <code>W'</code>) wird automatisch invertiert, außer es ist eigens definiert (wie <code>A'</code>). Wiederholung mit Zahl: <code>J4</code>, <code>W2</code>. Makros dürfen andere Makros verwenden. Namen: nur Buchstaben, nicht mit U, D, F, B, R, L, x, y, z beginnend.",
+  helpTitle:"Notation & Modell",
+  help1:"Züge wie beim 2×2: <code>R L U D F B</code> = Viertelumdrehung der Hälfte im Uhrzeigersinn, <code>'</code> = gegen den Uhrzeigersinn, Zahl = Anzahl Viertelumdrehungen (<code>R3</code>, <code>R4</code>, <code>U'2</code>, <code>R2'</code>). Gruppen: <code>(R4 U R4 U')3</code>. Ganze Würfeldrehungen: <code>x y z</code>.",
+  help2:"Mechanik-Modell: Jede Drehung einer Hälfte um 90° dreht den dazwischen liegenden Mittelring (4 Mitten, 4 Kanten, 8 Zahnräder) wie beim Mixup-Würfel um 45° mit. Darum ist <code>R4</code> nicht die Identität: Der Ring steht danach um 180° gedreht. Mitten und Kanten können dabei die Plätze tauschen. Ein Zahnrad wandert pro Zug eine Position weiter und dreht sich um 90° um die eigene Achse. Die Zahnräder sind nicht punktsymmetrisch, ihre Ausrichtung ist an der Form erkennbar; die optionale Hilfsmarke (weißer Punkt) zeigt im gelösten Zustand zur Würfelkante. Die Ecken verhalten sich wie beim 2×2.",
+  help3:"Bezeichnungen: Zahnrad <code>UF</code> = auf der U-Seite, Richtung F. Kante <code>UF</code> = zwischen U und F. Mitte <code>U</code>.",
+  help4:"Standard-Makros nach der Lösungsanleitung von Reddit/TwistyPuzzles (u. a. <code>W</code> tauscht F↔B und RF↔LB und dreht U, D um 90°).",
+  macroComment:"Algorithmen aus der Maltese-Gear-Cube-Lösungsanleitung", macroOwn:"eigene Makros, z. B.",
+  errLine:"Zeile {n}: erwartet „Name = Züge“", errName:"Zeile {n}: „{name}“ darf nicht mit U, D, F, B, R, L, x, y, z beginnen",
+  errParen:"Fehlende schließende Klammer", errUnexpParen:"Unerwartete „)“ an Position {pos}", errChar:"Unbekanntes Zeichen „{ch}“ an Position {pos}",
+  errSelf:"Makro „{name}“ ruft sich selbst auf", errMacro:"Makro „{name}“: {msg}", errSetup:"Setup: {msg}", errAlg:"Zugfolge: {msg}",
+  solved:"gelöst", stepsInfo:"{s} Schritte · {q} Vierteldrehungen", nextInfo:" · nächster: {m}", fromInfo:" (aus {m})", end:"Ende",
+  dGears:"Zahnräder (Winkel = Eigendrehung gegen den Uhrzeigersinn)", dGearSpin:"{s} dreht sich auf der Stelle",
+  dCorners:"Ecken", dCornerTwist:"{s} verdreht", dEC:"Kanten & Mitten", dCenterRot:"{s} auf der Stelle gedreht ({a}°)", dECRot:"{s} auf der Stelle gedreht/gekippt",
+  dNone:"Keine Veränderung – die Zugfolge ist (für diese Stellung) die Identität."
+},
+en:{
+  title:"Maltese Gear Cube – Move Sequence Explorer",
+  intro:"Cube net with corners, gears, edges and centers. Enter a starting position and a move sequence (macros such as <code>W</code>, <code>J</code>, <code>XL</code> work too) and compare before and after.",
+  setupLabel:"Starting position (setup moves, empty = solved)", setupPh:"e.g. R U2 F'", algLabel:"Move sequence",
+  apply:"Apply", first:"Start", prev:"◀ Back", next:"Next ▶", last:"End", play:"▶ Play", pause:"⏸ Pause",
+  invert:"Invert", invertTitle:"Invert the move sequence", expand:"Expand macros into single moves", markers:"Helper marks", theme:"Light/Dark",
+  before:"Before", step:"Step", after:"After",
+  legendStep:"Dashed: middle ring of the next move (turns 45° along) · Light outline: turning half",
+  legendAfter:"Orange outline: pieces that changed compared to “Before”",
+  addMove:"Append move", addMacro:"Append macro", changes:"Changes (Before → After)", undo:"remove last step",
+  macrosLabel:"Macros (one per line: <code>Name = moves</code>, <code>#</code> = comment)",
+  macroApply:"Apply macros", macroReset:"Restore defaults",
+  macroHelp:"A macro with <code>'</code> (e.g. <code>W'</code>) is inverted automatically unless it is defined explicitly (like <code>A'</code>). Repeat with a number: <code>J4</code>, <code>W2</code>. Macros may use other macros. Names: letters only, not starting with U, D, F, B, R, L, x, y, z.",
+  helpTitle:"Notation & model",
+  help1:"Moves as on a 2×2: <code>R L U D F B</code> = quarter turn of that half clockwise, <code>'</code> = counterclockwise, number = number of quarter turns (<code>R3</code>, <code>R4</code>, <code>U'2</code>, <code>R2'</code>). Groups: <code>(R4 U R4 U')3</code>. Whole-cube rotations: <code>x y z</code>.",
+  help2:"Mechanism model: every 90° turn of a half rotates the middle ring between the halves (4 centers, 4 edges, 8 gears) by 45°, like a Mixup cube. That is why <code>R4</code> is not the identity: afterwards the ring is turned by 180°. Centers and edges can swap places. Each move advances a gear by one position and spins it 90° about its own axis. The gears are not point-symmetric, so their orientation can be read from their shape; the optional helper mark (white dot) points towards the cube edge when solved. The corners behave like a 2×2.",
+  help3:"Naming: gear <code>UF</code> = on the U face, towards F. Edge <code>UF</code> = between U and F. Center <code>U</code>.",
+  help4:"Default macros taken from the Reddit/TwistyPuzzles solution guide (e.g. <code>W</code> swaps F↔B and RF↔LB and turns U, D by 90°).",
+  macroComment:"Algorithms from the Maltese Gear Cube solution guide", macroOwn:"your own macros, e.g.",
+  errLine:"Line {n}: expected “Name = moves”", errName:"Line {n}: “{name}” must not start with U, D, F, B, R, L, x, y, z",
+  errParen:"Missing closing parenthesis", errUnexpParen:"Unexpected “)” at position {pos}", errChar:"Unknown character “{ch}” at position {pos}",
+  errSelf:"Macro “{name}” calls itself", errMacro:"Macro “{name}”: {msg}", errSetup:"Setup: {msg}", errAlg:"Move sequence: {msg}",
+  solved:"solved", stepsInfo:"{s} steps · {q} quarter turns", nextInfo:" · next: {m}", fromInfo:" (from {m})", end:"End",
+  dGears:"Gears (angle = own rotation counterclockwise)", dGearSpin:"{s} spins in place",
+  dCorners:"Corners", dCornerTwist:"{s} twisted", dEC:"Edges & centers", dCenterRot:"{s} rotated in place ({a}°)", dECRot:"{s} rotated/flipped in place",
+  dNone:"No change – the sequence is the identity (for this position)."
+},
+es:{
+  title:"Maltese Gear Cube – Explorador de secuencias",
+  intro:"Desarrollo del cubo con esquinas, engranajes, aristas y centros. Introduce una posición inicial y una secuencia de movimientos (también con macros como <code>W</code>, <code>J</code>, <code>XL</code>) y compara antes y después.",
+  setupLabel:"Posición inicial (movimientos de preparación, vacío = resuelto)", setupPh:"p. ej. R U2 F'", algLabel:"Secuencia de movimientos",
+  apply:"Aplicar", first:"Inicio", prev:"◀ Atrás", next:"Adelante ▶", last:"Final", play:"▶ Reproducir", pause:"⏸ Pausa",
+  invert:"Invertir", invertTitle:"Invertir la secuencia", expand:"Desplegar macros en movimientos simples", markers:"Marcas de ayuda", theme:"Claro/Oscuro",
+  before:"Antes", step:"Paso", after:"Después",
+  legendStep:"Discontinuo: anillo central del siguiente movimiento (gira 45° con él) · Contorno claro: mitad que gira",
+  legendAfter:"Contorno naranja: piezas que cambiaron respecto a «Antes»",
+  addMove:"Añadir movimiento", addMacro:"Añadir macro", changes:"Cambios (Antes → Después)", undo:"quitar el último paso",
+  macrosLabel:"Macros (una por línea: <code>Nombre = movimientos</code>, <code>#</code> = comentario)",
+  macroApply:"Aplicar macros", macroReset:"Restaurar valores por defecto",
+  macroHelp:"Una macro con <code>'</code> (p. ej. <code>W'</code>) se invierte automáticamente, salvo que esté definida explícitamente (como <code>A'</code>). Repetición con número: <code>J4</code>, <code>W2</code>. Las macros pueden usar otras macros. Nombres: solo letras, sin empezar por U, D, F, B, R, L, x, y, z.",
+  helpTitle:"Notación y modelo",
+  help1:"Movimientos como en un 2×2: <code>R L U D F B</code> = cuarto de vuelta de esa mitad en sentido horario, <code>'</code> = antihorario, número = cantidad de cuartos de vuelta (<code>R3</code>, <code>R4</code>, <code>U'2</code>, <code>R2'</code>). Grupos: <code>(R4 U R4 U')3</code>. Giros del cubo completo: <code>x y z</code>.",
+  help2:"Modelo del mecanismo: cada giro de 90° de una mitad hace girar 45° el anillo central entre ambas mitades (4 centros, 4 aristas, 8 engranajes), como en un cubo Mixup. Por eso <code>R4</code> no es la identidad: después el anillo queda girado 180°. Centros y aristas pueden intercambiar posiciones. En cada movimiento un engranaje avanza una posición y gira 90° sobre su propio eje. Los engranajes no tienen simetría puntual, así que su orientación se reconoce por su forma; la marca de ayuda opcional (punto blanco) apunta hacia la arista del cubo en estado resuelto. Las esquinas se comportan como en un 2×2.",
+  help3:"Nombres: engranaje <code>UF</code> = en la cara U, hacia F. Arista <code>UF</code> = entre U y F. Centro <code>U</code>.",
+  help4:"Macros por defecto según la guía de solución de Reddit/TwistyPuzzles (p. ej. <code>W</code> intercambia F↔B y RF↔LB y gira U, D 90°).",
+  macroComment:"Algoritmos de la guía de solución del Maltese Gear Cube", macroOwn:"macros propias, p. ej.",
+  errLine:"Línea {n}: se esperaba «Nombre = movimientos»", errName:"Línea {n}: «{name}» no puede empezar por U, D, F, B, R, L, x, y, z",
+  errParen:"Falta un paréntesis de cierre", errUnexpParen:"«)» inesperado en la posición {pos}", errChar:"Carácter desconocido «{ch}» en la posición {pos}",
+  errSelf:"La macro «{name}» se llama a sí misma", errMacro:"Macro «{name}»: {msg}", errSetup:"Preparación: {msg}", errAlg:"Secuencia: {msg}",
+  solved:"resuelto", stepsInfo:"{s} pasos · {q} cuartos de vuelta", nextInfo:" · siguiente: {m}", fromInfo:" (de {m})", end:"Final",
+  dGears:"Engranajes (ángulo = giro propio antihorario)", dGearSpin:"{s} gira en su sitio",
+  dCorners:"Esquinas", dCornerTwist:"{s} orientada", dEC:"Aristas y centros", dCenterRot:"{s} girado en su sitio ({a}°)", dECRot:"{s} girado/volteado en su sitio",
+  dNone:"Sin cambios: la secuencia es la identidad (para esta posición)."
+}};
+let LANG="de";
+const t=(k,v={})=>(I18N[LANG][k]??I18N.de[k]??k).replace(/\{(\w+)\}/g,(_,n)=>v[n]??"");
+class MacroError extends Error{}
 // ---------- Vektor-/Matrix-Helfer ----------
 const dot=(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2];
 const cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];
@@ -219,7 +314,7 @@ function applySteps(st,steps){for(const s of steps)applyStep(st,s);return st;}
 const invQ=qs=>qs.slice().reverse().map(q=>({face:q.face,prime:!q.prime}));
 
 // ---------- Makros ----------
-const DEFAULT_MACROS=`# Algorithmen aus der Maltese-Gear-Cube-Lösungsanleitung
+const DEFAULT_MACROS=()=>`# ${t("macroComment")}
 A  = R U R' U' R' F R F'
 A' = F R' F' R U R U' R'
 C  = L' U' L U L F' L' F
@@ -232,7 +327,7 @@ J  = R U R U R U' R' U' R' U'
 J' = U R U R U R' U' R' U' R'
 K  = L' U' L' U' L' U L U L U
 K' = U' L' U' L' U' L U L U L
-# eigene Makros, z. B.
+# ${t("macroOwn")}
 Sexy = R U R' U'
 `;
 let MACROS={}; // name -> Text
@@ -241,9 +336,9 @@ function parseMacroText(txt){
   txt.split(/\r?\n/).forEach((line,i)=>{
     const l=line.replace(/#.*/,"").trim();if(!l)return;
     const m=l.match(/^([A-Za-z]+)\s*(['’]?)\s*[=:]\s*(.*)$/);
-    if(!m){errs.push(`Zeile ${i+1}: erwartet „Name = Züge“`);return;}
+    if(!m){errs.push(t("errLine",{n:i+1}));return;}
     const name=m[1]+(m[2]?"'":"");
-    if(/^[UDFBRLxyz]/.test(m[1])){errs.push(`Zeile ${i+1}: „${m[1]}“ darf nicht mit U, D, F, B, R, L, x, y, z beginnen`);return;}
+    if(/^[UDFBRLxyz]/.test(m[1])){errs.push(t("errName",{n:i+1,name:m[1]}));return;}
     out[name]=m[3];
   });
   return {macros:out,errs};
@@ -262,11 +357,11 @@ function parse(str,stack=[]){
       const ch=s[i];
       if(/[\s,;.]/.test(ch)){i++;continue;}
       if(ch==="("){i++;const inner=seq(depth+1);
-        if(s[i]!==")")throw new Error("Fehlende schließende Klammer");
+        if(s[i]!==")")throw new Error(t("errParen"));
         i++;const {prime,count}=mods();
         let body=inner;if(prime)body=inner.slice().reverse().map(invertStep);
         for(let k=0;k<count;k++)out.push(...body.map(st=>({...st})));continue;}
-      if(ch===")"){if(depth===0)throw new Error("Unerwartete „)“ an Position "+(i+1));return out;}
+      if(ch===")"){if(depth===0)throw new Error(t("errUnexpParen",{pos:i+1}));return out;}
       const name=names.find(n=>s.startsWith(n,i));
       if(name){i+=name.length;const {prime,count}=mods();
         if(count===0)continue;
@@ -279,17 +374,17 @@ function parse(str,stack=[]){
       if(/[UDFBRLxyz]/.test(ch)){i++;const {prime,count}=mods();
         if(count>0)out.push({label:ch+(count!==1?count:"")+(prime?"'":""),moves:Array.from({length:count},()=>({face:ch,prime}))});
         continue;}
-      throw new Error("Unbekanntes Zeichen „"+ch+"“ an Position "+(i+1));
+      throw new Error(t("errChar",{ch,pos:i+1}));
     }
-    if(depth>0)throw new Error("Fehlende schließende Klammer");
+    if(depth>0)throw new Error(t("errParen"));
     return out;
   }
   return seq(0);
 }
 function expandMacro(name,stack){
-  if(stack.includes(name))throw new Error("Makro „"+name+"“ ruft sich selbst auf");
+  if(stack.includes(name))throw new MacroError(t("errSelf",{name}));
   let steps;
-  try{steps=parse(MACROS[name],[...stack,name]);}catch(e){throw new Error(e.message.startsWith("Makro")?e.message:`Makro „${name}“: ${e.message}`);}
+  try{steps=parse(MACROS[name],[...stack,name]);}catch(e){throw e instanceof MacroError?e:new MacroError(t("errMacro",{name,msg:e.message}));}
   return steps.flatMap(st=>st.moves);
 }
 function invertStep(st){
@@ -452,17 +547,17 @@ function describeDiff(st0,st1){
     const rots=cyc.map(s=>{const p=a.gear[s],q=Object.values(b.gear).find(x=>x.id===p.id);return ((gearQuarter(q)-gearQuarter(p))%4+4)%4;});
     if(cyc.length===1&&rots[0]===0)continue;
     const r=cyc.map((s,i)=>rots[i]?`${s}(+${rots[i]*90}°)`:s);
-    gi.push(cyc.length===1?`  ${r[0]} dreht sich auf der Stelle`:"  "+r.join(" → ")+" → "+cyc[0]);
+    gi.push(cyc.length===1?"  "+t("dGearSpin",{s:r[0]}):"  "+r.join(" → ")+" → "+cyc[0]);
   }
-  fmt("Zahnräder (Winkel = Eigendrehung gegen den Uhrzeigersinn)",gi);
+  fmt(t("dGears"),gi);
   const ci=[];
   for(const cyc of cycles(a.corner,b.corner)){
     const tw=cyc.map(s=>{const p=a.corner[s],q=Object.values(b.corner).find(x=>x.id===p.id);return ((cornerTwist(q)-cornerTwist(p))%3+3)%3;});
     if(cyc.length===1&&tw[0]===0)continue;
     const r=cyc.map((s,i)=>s+(tw[i]?(tw[i]===1?"↻":"↺"):""));
-    ci.push(cyc.length===1?`  ${r[0]} verdreht`:"  "+r.join(" → ")+" → "+cyc[0]);
+    ci.push(cyc.length===1?"  "+t("dCornerTwist",{s:r[0]}):"  "+r.join(" → ")+" → "+cyc[0]);
   }
-  fmt("Ecken",ci);
+  fmt(t("dCorners"),ci);
   const ei=[];
   for(const cyc of cycles(a.ec,b.ec)){
     if(cyc.length===1){const s=cyc[0];if(rKey(a.ec[s].R)===rKey(b.ec[s].R))continue;
@@ -470,13 +565,13 @@ function describeDiff(st0,st1){
       if(p.type==="center"&&SLOTS.ecs.find(e=>e.name===s).type==="center"){
         const n=FACES[s],m0=mulMV(p.R,FRAME[p.id][1]),m1=mulMV(q.R,FRAME[q.id][1]);
         const ang=Math.round(Math.atan2(dot(cross(m0,m1),n),dot(m0,m1))*180/Math.PI);
-        ei.push(`  ${s} auf der Stelle gedreht (${ang>0?"+":""}${ang}°)`);
-      }else ei.push(`  ${s} auf der Stelle gedreht/gekippt`);
+        ei.push("  "+t("dCenterRot",{s,a:(ang>0?"+":"")+ang}));
+      }else ei.push("  "+t("dECRot",{s}));
       continue;}
     ei.push("  "+cyc.join(" → ")+" → "+cyc[0]);
   }
-  fmt("Kanten & Mitten",ei);
-  return lines.length?lines.join("\n\n"):"Keine Veränderung – die Zugfolge ist (für diese Stellung) die Identität.";
+  fmt(t("dEC"),ei);
+  return lines.length?lines.join("\n\n"):t("dNone");
 }
 
 // ---------- UI ----------
@@ -493,8 +588,8 @@ function loadMacros(txt){
 function compute(){
   $("err").textContent="";
   let setup,alg;
-  try{setup=parse($("setup").value);}catch(e){$("err").textContent="Setup: "+e.message;return;}
-  try{alg=parse($("alg").value);}catch(e){$("err").textContent="Zugfolge: "+e.message;return;}
+  try{setup=parse($("setup").value);}catch(e){$("err").textContent=t("errSetup",{msg:e.message});return;}
+  try{alg=parse($("alg").value);}catch(e){$("err").textContent=t("errAlg",{msg:e.message});return;}
   steps=$("expand").checked?alg.flatMap(st=>st.macro?compress(st.moves).map((x,i,arr)=>({...x,from:st.label,first:i===0})):[st]):alg;
   before=applySteps(solved(),setup);states=[clone(before)];
   for(const st of steps)states.push(applyStep(clone(states[states.length-1]),st));
@@ -509,13 +604,13 @@ function draw(){
   $("netBefore").innerHTML=render(before,{markers:mk});
   $("netAfter").innerHTML=render(after,{changed:ch,markers:mk});
   $("netStep").innerHTML=render(states[cur],{nextMove:nq,markers:mk});
-  $("lblBefore").textContent=$("setup").value.trim()||"gelöst";
+  $("lblBefore").textContent=$("setup").value.trim()||t("solved");
   const nQ=steps.reduce((n,s)=>n+s.moves.length,0);
-  $("lblAfter").textContent=`${steps.length} Schritte · ${nQ} Vierteldrehungen`;
-  $("lblStep").textContent=`${cur}/${steps.length}`+(steps[cur]?` · nächster: ${steps[cur].label}${steps[cur].from?" (aus "+steps[cur].from+")":""}`:"");
+  $("lblAfter").textContent=t("stepsInfo",{s:steps.length,q:nQ});
+  $("lblStep").textContent=`${cur}/${steps.length}`+(steps[cur]?t("nextInfo",{m:steps[cur].label})+(steps[cur].from?t("fromInfo",{m:steps[cur].from}):""):"");
   $("chips").innerHTML=steps.map((m,i)=>(m.first?`<span class="lbl" style="margin:4px 0 0 4px">${m.from}:</span>`:"")+
     `<span class="chip ${m.macro?"macro":""} ${i<cur?"done":""} ${i===cur?"cur":""}" data-i="${i}" title="${m.macro?m.macro.text.replace(/"/g,"&quot;"):""}">${m.label}</span>`).join("")
-    +`<span class="chip ${cur===steps.length?"cur":""}" data-i="${steps.length}">Ende</span>`;
+    +`<span class="chip ${cur===steps.length?"cur":""}" data-i="${steps.length}">${t("end")}</span>`;
   $("diff").innerHTML=describeDiff(before,after);
 }
 $("chips").addEventListener("click",e=>{const i=e.target.dataset.i;if(i!==undefined){cur=+i;draw();}});
@@ -528,13 +623,29 @@ $("last").onclick=()=>{cur=steps.length;draw();};
 $("prev").onclick=()=>{if(cur>0){cur--;draw();}};
 $("next").onclick=()=>{if(cur<steps.length){cur++;draw();}};
 $("play").onclick=()=>{
-  if(timer){clearInterval(timer);timer=null;$("play").textContent="▶ Abspielen";return;}
-  if(cur>=steps.length)cur=0;$("play").textContent="⏸ Pause";
-  timer=setInterval(()=>{if(cur>=steps.length){clearInterval(timer);timer=null;$("play").textContent="▶ Abspielen";return;}cur++;draw();},700);draw();
+  if(timer){clearInterval(timer);timer=null;$("play").textContent=t("play");return;}
+  if(cur>=steps.length)cur=0;$("play").textContent=t("pause");
+  timer=setInterval(()=>{if(cur>=steps.length){clearInterval(timer);timer=null;$("play").textContent=t("play");return;}cur++;draw();},700);draw();
 };
 $("invert").onclick=()=>{try{$("alg").value=parse($("alg").value).reverse().map(invertStep).map(m=>m.label).join(" ");cur=0;compute();}catch(e){$("err").textContent=e.message;}};
 $("theme").onclick=()=>{const r=document.documentElement,dark=r.dataset.theme?r.dataset.theme==="dark":matchMedia("(prefers-color-scheme: dark)").matches;r.dataset.theme=dark?"light":"dark";};
-$("pad").innerHTML=["R","L","U","D","F","B"].flatMap(f=>[f,f+"'",f+"2",f+"4"]).concat(["x","y","z"]).map(m=>`<button data-m="${m}">${m}</button>`).join("")+`<button data-m="undo" title="letzten Schritt entfernen">⌫</button>`;
+const renderPad=()=>{$("pad").innerHTML=["R","L","U","D","F","B"].flatMap(f=>[f,f+"'",f+"2",f+"4"]).concat(["x","y","z"]).map(m=>`<button data-m="${m}">${m}</button>`).join("")+`<button data-m="undo" title="${t("undo")}">⌫</button>`;};
+// Sprache: statische Texte setzen; Standard aus gespeicherter Wahl oder Browsersprache
+function applyLang(lang){
+  LANG=I18N[lang]?lang:"en";document.documentElement.lang=LANG;$("lang").value=LANG;
+  document.querySelectorAll("[data-i18n]").forEach(el=>el.textContent=t(el.dataset.i18n));
+  document.querySelectorAll("[data-i18n-html]").forEach(el=>el.innerHTML=t(el.dataset.i18nHtml));
+  document.querySelectorAll("[data-i18n-title]").forEach(el=>el.title=t(el.dataset.i18nTitle));
+  document.querySelectorAll("[data-i18n-ph]").forEach(el=>el.placeholder=t(el.dataset.i18nPh));
+  $("play").textContent=t(timer?"pause":"play");
+  document.title=t("title");
+  renderPad();
+}
+$("lang").onchange=()=>{store.set("mgcLang",$("lang").value);applyLang($("lang").value);
+  // Standard-Makros (nicht selbst bearbeitet) mit übersetzten Kommentaren neu setzen
+  if(!store.get("mgcMacros"))$("macros").value=DEFAULT_MACROS();
+  loadMacros($("macros").value);compute();};
+applyLang(store.get("mgcLang")||(navigator.language||"en").slice(0,2).toLowerCase());
 function padClick(e){const m=e.target.dataset.m;if(!m)return;
   if(m==="undo"){try{const s=parse($("alg").value);s.pop();$("alg").value=s.map(x=>x.label).join(" ");}catch(err){}}
   else $("alg").value=($("alg").value.trim()+" "+m).trim();
@@ -542,9 +653,9 @@ function padClick(e){const m=e.target.dataset.m;if(!m)return;
 $("pad").addEventListener("click",padClick);
 $("macroPad").addEventListener("click",padClick);
 $("macroApply").onclick=()=>{store.set("mgcMacros",$("macros").value);loadMacros($("macros").value);compute();};
-$("macroReset").onclick=()=>{$("macros").value=DEFAULT_MACROS;$("macroApply").click();};
+$("macroReset").onclick=()=>{$("macros").value=DEFAULT_MACROS();$("macroApply").click();};
 document.addEventListener("keydown",e=>{if(/INPUT|TEXTAREA/.test(e.target.tagName))return;if(e.key==="ArrowRight")$("next").click();if(e.key==="ArrowLeft")$("prev").click();});
-$("macros").value=store.get("mgcMacros")||DEFAULT_MACROS;
+$("macros").value=store.get("mgcMacros")||DEFAULT_MACROS();
 loadMacros($("macros").value);
 try{const saved=JSON.parse(store.get("mgc")||"null");if(saved){$("setup").value=saved.setup;$("alg").value=saved.alg;}}catch(e){}
 compute();

@@ -1,44 +1,49 @@
-# Maltese Gear Cube – Zugfolgen nachvollziehen
+# Maltese Gear Cube – Move Sequence Explorer
 
-Lokale Web-App (eine einzige HTML-Datei, kein Build, keine Abhängigkeiten), die den
-Meffert's Maltese Gear Cube als Würfelnetz darstellt und Zugfolgen Schritt für Schritt
-nachvollziehbar macht – mit Vergleich **Vorher / Schritt / Nachher**.
+A local web app (a single HTML file, no build step, no dependencies) that shows
+Meffert's Maltese Gear Cube as a cube net and lets you step through move sequences,
+comparing **Before / Step / After**.
 
-**Online:** https://kingdeim.github.io/MalteseGearCube/ (sobald GitHub Pages aktiviert ist)
-**Lokal:** `index.html` im Browser öffnen.
+**Online:** https://kingdeim.github.io/MalteseGearCube/ (once GitHub Pages is enabled)
+**Local:** open `index.html` in any browser.
 
-## Funktionen
+Available in **English, German and Spanish** – picked from your browser language,
+switchable in the top-right corner.
 
-- Drei Würfelnetze nebeneinander: Ausgangsstellung, aktueller Schritt, Ergebnis
-- Durchschalten per Buttons, Pfeiltasten oder „Abspielen“; gestrichelt markiert ist der
-  Mittelring des nächsten Zugs
-- Veränderte Teile im Ergebnis werden hervorgehoben; zusätzlich eine Liste der Zyklen
-  (Zahnräder inkl. Eigendrehung, Ecken inkl. Verdrehung, Kanten & Mitten)
-- Makros (z. B. `W`, `J`, `K`, `A`, `C`, `XL`, `XR`, `XB`) – editierbar, im Browser gespeichert
-- Zugfolge invertieren, Makros wahlweise in Einzelzüge auflösen
-- Flächen-Grafik aus einem Foto des Originals abgepaust (Ecksterne, asymmetrische Zahnräder)
+## Features
+
+- Three cube nets side by side: starting position, current step, result
+- Step with buttons, arrow keys or "Play"; the middle ring of the next move is shown dashed
+- Changed pieces are highlighted in the result, plus a list of cycles
+  (gears with their own rotation, corners with twist, edges & centers)
+- Macros (e.g. `W`, `J`, `K`, `A`, `C`, `XL`, `XR`, `XB`) – editable and stored in the browser
+- Invert a sequence, optionally expand macros into single moves
+- Face graphics traced from a photo of the real puzzle (corner stars, asymmetric gears)
 
 ## Notation
 
-| Eingabe | Bedeutung |
+| Input | Meaning |
 |---|---|
-| `R L U D F B` | Viertelumdrehung der jeweiligen Hälfte im Uhrzeigersinn |
-| `R'` | gegen den Uhrzeigersinn |
-| `R3`, `R4`, `U'2` | Anzahl Viertelumdrehungen |
-| `(R4 U R4 U')3` | Gruppe mit Wiederholung |
-| `x y z` | ganze Würfeldrehung |
-| `W`, `J'`, `A` … | Makros (mit `'` invertiert, mit Zahl wiederholt) |
+| `R L U D F B` | quarter turn of that half, clockwise |
+| `R'` | counterclockwise |
+| `R3`, `R4`, `U'2` | number of quarter turns |
+| `(R4 U R4 U')3` | group with repetition |
+| `x y z` | whole-cube rotation |
+| `W`, `J'`, `A` … | macros (`'` inverts, a number repeats) |
 
-Bezeichnungen: Zahnrad `UF` = auf der U-Seite, Richtung F; Kante `UF` = zwischen U und F; Mitte `U`.
+Naming: gear `UF` = on the U face, towards F; edge `UF` = between U and F; center `U`.
 
-## Mechanik-Modell
+## Mechanism model
 
-Rekonstruiert und gegen die Algorithmen einer bekannten Lösungsanleitung geprüft:
+Reconstructed and checked against the algorithms of a well-known solution guide:
 
-- Eine Vierteldrehung dreht eine Würfelhälfte wie beim 2×2 um 90°.
-- Der Mittelring dazwischen (4 Mitten, 4 Kanten, 8 Zahnräder) dreht sich wie beim
-  Mixup-Würfel um 45° mit – deshalb ist `R4` nicht die Identität, und Mitten und Kanten
-  können die Plätze tauschen.
-- Zahnräder im Ring rücken eine Position weiter und drehen sich dabei um 90° um ihre Achse.
+- A quarter turn rotates one half of the cube by 90°, like a 2×2.
+- The middle ring between the halves (4 centers, 4 edges, 8 gears) turns 45° along,
+  like a Mixup cube – so `R4` is not the identity, and centers and edges can swap places.
+- Gears in the ring advance one position and spin 90° about their own axis.
 
-Farben im gelösten Zustand: U weiß, D gelb, F grün, B blau, L rot, R violett.
+Solved colors: U white, D yellow, F green, B blue, L red, R purple.
+
+## License
+
+MIT – see [LICENSE](LICENSE).
