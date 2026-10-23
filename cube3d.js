@@ -9,14 +9,13 @@ const Cube3D=(()=>{
   const SURF=1.0,LIFT=0.001,THICK=0.004,GEAR_DEPTH=0.06; // Farbflächen hauchdünn, Zahnradkörper
   const RING_W=0.12,RING_IN=0.6,CORE_R=0.62; // halbe Breite des Mittelrings, Innenkante der Mitten, Kern
   const EDGE_HEAD=0.84,EDGE_HW=0.095,STEM_IN=0.45; // Kantenkopf ab 0.84, halbe Breite längs der Kante, Stielbeginn
-  const NOTCH_L=0.3,NOTCH_D=0.8; // Aussparung der Ecken neben den Kantensteinen
-  const GEAR_TILT=15; // Neigung der Zahnradachse in Grad (180° gedreht → doppelt so schief)
+  const GEAR_TILT=25; // Neigung der Zahnradachse in Grad (180° gedreht → doppelt so schief)
 
   // ---------- Materialien ----------
   const mats={};
   const cssColor=k=>getComputedStyle(document.documentElement).getPropertyValue(`--c${k}`).trim()||"#888";
   const faceMat=k=>mats[k]||(mats[k]=new THREE.MeshStandardMaterial({color:cssColor(k),roughness:0.5,metalness:0.0}));
-  let BODY,HOLE;
+  let BODY;
 
   // ---------- Geometrie-Helfer ----------
   // Abbildung Seitenkoordinaten (u nach rechts, v nach unten, w nach außen) → Welt.
@@ -50,27 +49,17 @@ const Cube3D=(()=>{
   // ---------- Teile aufbauen ----------
   function cornerGroup(c){
     const g=new THREE.Group(),[sx,sy,sz]=c.pos,N=HOLE0;
-    // Oktant ohne die hohle Würfelecke: drei Quader
-    const B=(a0,a1,b0,b1,c0,c1,m)=>{const iv=(s,p,q)=>s>0?[p,q]:[-q,-p];
-      const[X0,X1]=iv(sx,a0,a1),[Y0,Y1]=iv(sy,b0,b1),[Z0,Z1]=iv(sz,c0,c1);g.add(box(X0,X1,Y0,Y1,Z0,Z1,m));};
-    // Körper aus Rasterzellen (Koordinaten im Oktanten, 0 = Mitte, 1 = Außenfläche):
-    // frei bleiben die drei Mittelringe (< RING_W), die hohle Würfelecke (alle drei ≥ N)
-    // und je eine Aussparung neben den Kantensteinen (eine Koordinate < NOTCH_L, zwei ≥ NOTCH_D).
-    const cuts=[RING_W,NOTCH_L,N,NOTCH_D,1],inBody=(a,b,c)=>{
-      const v=[a,b,c],hi=v.filter(x=>x>=N).length;
-      if(hi===3)return false;
-      for(let i=0;i<3;i++){const o=v.filter((_,j)=>j!==i);if(v[i]<NOTCH_L&&o[0]>=NOTCH_D&&o[1]>=NOTCH_D)return false;}
-      return true;};
-    for(let i=0;i<4;i++)for(let j=0;j<4;j++)for(let k=0;k<4;k++){
-      const m=(p)=>(cuts[p]+cuts[p+1])/2;
-      if(inBody(m(i),m(j),m(k)))B(cuts[i],cuts[i+1],cuts[j],cuts[j+1],cuts[k],cuts[k+1],BODY);
-    }
-    B(N,N+0.02,N,1,N,1,HOLE);B(N,1,N,N+0.02,N,1,HOLE);B(N,1,N,1,N,N+0.02,HOLE); // dunkle Innenseiten der Öffnung
+    // Innerer Block (bis knapp unter die Oberfläche) verbindet die drei Sternflügel
+    const iv=(s,p,q)=>s>0?[p,q]:[-q,-p];
+    const[X0,X1]=iv(sx,RING_W,N),[Y0,Y1]=iv(sy,RING_W,N),[Z0,Z1]=iv(sz,RING_W,N);
+    g.add(box(X0,X1,Y0,Y1,Z0,Z1,BODY));
+    // Auf jeder der drei Seiten: schwarzer Körper in Sternform (folgt der Farbfläche) plus dünne Farbschicht
     for(const face of ORDER){const n=FACES[face];if(dot(n,c.pos)<=0.5)continue;
       const[r,d]=FRAME[face],su=Math.sign(dot(c.pos,r)),sv=Math.sign(dot(c.pos,d));
       const col=homeFace(c.R,P3(face,su*0.5,sv*0.5));
-      const deg={"-1,-1":0,"1,-1":90,"1,1":180,"-1,1":270}[su+","+sv];
-      g.add(plate(face,rotUV(STAR_P,deg),faceMat(col),true));
+      const deg={"-1,-1":0,"1,-1":90,"1,1":180,"-1,1":270}[su+","+sv],pts=rotUV(STAR_P,deg);
+      g.add(plate(face,pts,BODY,true,N,SURF-N));
+      g.add(plate(face,pts,faceMat(col),true));
     }
     return g;
   }
@@ -170,27 +159,39 @@ const Cube3D=(()=>{
     return out;
   }
   const ease=t=>t<0.5?2*t*t:1-Math.pow(-2*t+2,2)/2;
-  // Spielt eine Liste von Viertelzügen ab; liefert ein Promise, das nach dem letzten Zug erfüllt ist
-  function play(st0,quarters,dur=320){
+  // Anfahren/Abbremsen nur am Anfang und Ende eines Schritts, dazwischen gleichmäßig
+  const easeIn=t=>-t*t*t+2*t*t, easeOut=t=>1-easeIn(1-t);
+  const ONE=typeof THREE!=="undefined"?new THREE.Vector3(1,1,1):null;
+  let finalState=null;
+  // Spielt eine Liste von Viertelzügen ab; liefert ein Promise, das nach dem letzten Zug erfüllt ist.
+  // Die Teile werden nur einmal aufgebaut: jeder Viertelzug setzt Gruppenmatrix = Bewegung(t) · Lage davor.
+  function play(st0,quarters,per=400){
     stop();
-    if(!renderer)return Promise.resolve();
+    if(!renderer||!quarters.length)return Promise.resolve();
+    finalState=quarters.reduce((s,q)=>{applyQ(s,q);return s;},clone(st0));
+    build(st0);
+    for(const p of pieces){p.group.matrixAutoUpdate=false;p.group.updateMatrix();}
     return new Promise(resolve=>{
-      let st=clone(st0),i=0;
-      const per=quarters.length>8?Math.max(110,dur*8/quarters.length):dur;
-      const next=()=>{
-        if(i>=quarters.length){anim=null;resolve();return;}
-        const q=quarters[i++],end=clone(st);applyQ(end,q);
-        build(st);const mv=motions(st,end,q),t0=performance.now();
-        anim={resolve,frame:now=>{
-          const t=Math.min(1,(now-t0)/per),e=ease(t);
-          for(const p of pieces){const f=mv.get(p.kind+p.id);if(!f)continue;const m=f(e);p.group.quaternion.copy(m.q);p.group.position.copy(m.p);}
-          if(t>=1){st=end;next();if(!anim)build(st);}
-        }};
-      };
-      next();loop();
+      const n=quarters.length;let st=clone(st0),i=0,mv=null,base=null,t0=0;
+      const begin=start=>{const end=clone(st);applyQ(end,quarters[i]);mv=motions(st,end,quarters[i]);st=end;
+        base=new Map(pieces.map(p=>[p,p.group.matrix.clone()]));t0=start;};
+      anim={resolve,frame:now=>{
+        if(!mv)begin(now);
+        const t=Math.min(1,(now-t0)/per);
+        const e=n===1?ease(t):i===0?easeIn(t):i===n-1?easeOut(t):t;
+        for(const p of pieces){const f=mv.get(p.kind+p.id);if(!f)continue;const m=f(e);
+          p.group.matrix.compose(m.p,m.q,ONE).multiply(base.get(p));}
+        if(t>=1){
+          i++;
+          if(i>=n){anim=null;build(finalState);finalState=null;resolve();}
+          else begin(Math.max(now-per,t0+per)); // nahtlos weiter, bei starkem Ruckeln nicht nachholen
+        }
+      }};
+      loop();
     });
   }
-  function stop(){if(anim){const r=anim.resolve;anim=null;r();}}
+  // Bricht eine laufende Animation sofort ab und zeigt die Endstellung
+  function stop(){if(anim){const r=anim.resolve;anim=null;if(finalState){build(finalState);finalState=null;}r();}}
 
   // ---------- Szene, Kamera, Bedienung ----------
   function placeCamera(){
@@ -216,7 +217,6 @@ const Cube3D=(()=>{
     if(renderer){el.appendChild(renderer.domElement);resize();return true;}
     if(typeof THREE==="undefined")return false;
     BODY=new THREE.MeshStandardMaterial({color:0x141416,roughness:0.35,metalness:0.15});
-    HOLE=new THREE.MeshStandardMaterial({color:0x050506,roughness:0.9});
     STAR_P=smoothPts(STAR_TL);GEAR_P=smoothPts(GEAR_PATH);
     renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});
     renderer.setPixelRatio(Math.min(2,window.devicePixelRatio||1));

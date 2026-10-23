@@ -3,6 +3,22 @@
 All notable changes to this project are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.4.0] – 2026-10-23
+
+### Added
+- Speed slider for the animation (5 steps, remembered).
+
+### Changed
+- 3D: corner bodies follow the star outline, so they no longer cover the gears.
+- 3D: gear axle tilt increased to 25°.
+- Animation: pieces are built once per step instead of once per quarter turn; constant speed
+  within a step (easing only at its start and end).
+
+### Fixed
+- Long steps such as `R100` were jerky or not animated at all; they now run smoothly.
+- "Pause" and navigation now stop a running animation immediately (previously only after the
+  whole step had finished).
+
 ## [1.3.1] – 2026-10-23
 
 ### Fixed

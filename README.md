@@ -21,7 +21,7 @@ switchable in the top-right corner.
 - Face graphics traced from a photo of the real puzzle (corner stars, asymmetric gears)
 - **3D view** with animated moves: switch the Step panel between "Net" and "3D";
   "Next ▶" and "Play" animate every quarter turn (half 90°, middle ring 45°, gears spinning).
-  Drag to rotate, scroll to zoom, double-click to reset the view.
+  Drag to rotate, scroll to zoom, double-click to reset the view; a slider sets the speed.
 - Mobile layout: the cube view comes first; on small screens "Step", "Before" and "After" are
   tabs, and the input, moves/changes and macro sections can be collapsed (state is remembered).
   The playback controls sit directly below the view.
@@ -131,20 +131,23 @@ Changed pieces are found by comparing `signature()` of the before and after stat
 
 ### 3D view and animation (`cube3d.js`)
 
-The 3D scene is rebuilt from the simulation state, piece by piece: each corner is an
-octant-shaped body (built from grid cells) with the hollow corner cut out and a notch next to
-each edge stone, plus its three star stickers, leaving the three middle rings free; gears are thin extruded plates using the traced outlines (three.js
-`ExtrudeGeometry`, quadratic curves through the smoothed points). A fixed black sphere
-represents the core. Every piece is its own `THREE.Group`, so a move can transform it freely.
+The 3D scene is built from the simulation state, piece by piece. Every piece is its own
+`THREE.Group`, so a move can transform it freely. All shapes use the traced outlines
+(three.js `ExtrudeGeometry`, quadratic curves through the smoothed points); the coloured
+stickers are very thin films on black bodies. A fixed black sphere represents the core.
 
-Edges and centers are rigid pieces inside the middle ring: a center is a column, an edge is a
-small head at the cube edge and a diagonal stem of the same width, extruded as one piece
-(pentagon cross-section). All coloured stickers are very thin films on the black bodies.
-Each one is built in its solved
-pose (with its stickers) and then transformed by its rotation matrix `R` from the simulation.
-So an edge sitting in a center slot sticks out of the face as a ridge, and a center sitting
-in an edge slot lies recessed – exactly like on the real puzzle. (The 2D net shows the same
-situation as a two-coloured sticker.)
+- **Corners:** a small inner block plus, on each of the three faces, a black prism that follows
+  the star outline (so the corner never hides neighbouring gears) with the coloured film on top.
+  The hollow cube corner and the three middle rings stay free.
+- **Edges and centers** are rigid pieces inside the middle ring: a center is a column, an edge is
+  a small head at the cube edge and a diagonal stem of the same width, extruded as one piece
+  (pentagon cross-section). Each one is built in its solved pose and transformed by its rotation
+  matrix `R` from the simulation. So an edge sitting in a center slot sticks out of the face, and
+  a center sitting in an edge slot lies recessed – as on the real puzzle. (The 2D net shows the
+  same situation as a two-coloured sticker.)
+- **Gears** are black bodies with a coloured top that spin about an axle tilted by `GEAR_TILT`
+  (25°) towards the cube edge. In the solved orientation a gear lies flat; turned by 90° it stands
+  tilted across a diagonal, and turned by 180° it is tilted the most (twice the axle angle).
 
 A step is animated one quarter turn at a time. For each quarter turn the state before and
 after is known, and every piece gets a motion function of t ∈ [0, 1]:
@@ -152,21 +155,20 @@ after is known, and every piece gets a motion function of t ∈ [0, 1]:
 - pieces in the turning half (and all pieces for `x y z`) rotate rigidly by 90°,
 - edges and centers in the middle ring rotate by 45°,
 - ring gears travel around the axis from their start to their end position while their
-  orientation is interpolated (quaternion slerp) – this shows the 90° spin.
+  orientation (including the tilt) is interpolated by quaternion slerp.
 
-Gears are black bodies with a thin coloured top and spin about an axle that is tilted by
-`GEAR_TILT` (15°) towards the cube edge. In the solved
-orientation a gear lies flat; turned by 90° it stands tilted across a diagonal, and turned by 180°
-it is tilted the most (twice the axle angle) – as on the real puzzle.
-
-After the last quarter turn the scene is rebuilt from the final state. Rendering is on demand
-(only while animating or when the view changes); the camera is a small orbit control written
-for pointer events, so it works with mouse and touch.
+The scene is built only once per step: each quarter turn sets the group matrix to
+*motion(t) · pose before the quarter turn*, so even `R100` runs smoothly. Only the first and last
+quarter turn of a step accelerate and decelerate; in between the speed is constant. The speed
+slider sets the duration per quarter turn (900 … 150 ms). `Cube3D.stop()` ends an animation
+immediately and shows the final position – used by "Pause" and by any navigation.
+Rendering is on demand (only while animating or when the view changes); the camera is a small
+orbit control written for pointer events, so it works with mouse and touch.
 
 ### Persistence and debugging
 
 `localStorage` keys: `mgc` (setup and sequence), `mgcMacros` (edited macros), `mgcView` (net or 3D),
-`mgcTab` (mobile tab), `mgcFold` (collapsed sections) and
+`mgcTab` (mobile tab), `mgcFold` (collapsed sections), `mgcSpeed` (animation speed) and
 `mgcLang` (language). All access is wrapped in `try/catch`, so the app also runs where
 storage is blocked. For experiments in the browser console, `window.MGC` exposes
 `solved`, `parse`, `applySteps`, `index` and `describeDiff`, e.g.:

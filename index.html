@@ -70,6 +70,8 @@ details summary{cursor:pointer;color:var(--muted);font-size:14px}
 .fold[open]>summary{margin-bottom:10px}
 .transport{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-top:8px}
 .transport button{min-width:44px}
+.speed{display:flex;align-items:center;justify-content:center;gap:8px;margin:8px 0 0;font-size:13px}
+.speed input{width:140px;accent-color:var(--accent)}
 .nettabs{display:none}
 @media (max-width:760px){
   /* Handy: zuerst die Ansicht (Reiter + Würfel), danach Eingabe und Rest */
@@ -137,6 +139,7 @@ details summary{cursor:pointer;color:var(--muted);font-size:14px}
         <button id="next" data-i18n="next"></button>
         <button id="last" data-i18n-title="last">⏭</button>
       </div>
+      <label class="speed"><span data-i18n="speed"></span> <input type="range" id="speed" min="0" max="4" step="1" value="2"></label>
       <div class="chips" id="chips"></div>
       <div class="legend" id="legendStep" data-i18n="legendStep"></div><div class="legend" id="legend3d" data-i18n="hint3d" hidden></div></div>
     <div class="panel net t-after"><h2><span class="h" data-i18n="after"></span> <span id="lblAfter"></span></h2><div id="netAfter"></div>
@@ -178,7 +181,7 @@ details summary{cursor:pointer;color:var(--muted);font-size:14px}
 </main>
 
 <script src="lib/three.min.js"></script>
-<script src="cube3d.js?v=1.3.1"></script>
+<script src="cube3d.js?v=1.4.0"></script>
 <script>
 "use strict";
 // ---------- Sprachen / i18n ----------
@@ -209,6 +212,7 @@ de:{
   dGears:"Zahnräder (Winkel = Eigendrehung gegen den Uhrzeigersinn)", dGearSpin:"{s} dreht sich auf der Stelle",
   dCorners:"Ecken", dCornerTwist:"{s} verdreht", dEC:"Kanten & Mitten", dCenterRot:"{s} auf der Stelle gedreht ({a}°)", dECRot:"{s} auf der Stelle gedreht/gekippt",
   dNone:"Keine Veränderung – die Zugfolge ist (für diese Stellung) die Identität.",
+  speed:"Tempo",
   secInput:"Eingabe", secMoves:"Züge & Veränderungen", secMacros:"Makros",
   viewNet:"Netz", hint3d:"Ziehen dreht den Würfel, Mausrad zoomt, Doppelklick setzt die Ansicht zurück. Mit „Vor ▶“ und „Abspielen“ werden die Züge animiert.", no3d:"3D nicht verfügbar: lib/three.min.js fehlt oder WebGL ist deaktiviert."
 },
@@ -238,6 +242,7 @@ en:{
   dGears:"Gears (angle = own rotation counterclockwise)", dGearSpin:"{s} spins in place",
   dCorners:"Corners", dCornerTwist:"{s} twisted", dEC:"Edges & centers", dCenterRot:"{s} rotated in place ({a}°)", dECRot:"{s} rotated/flipped in place",
   dNone:"No change – the sequence is the identity (for this position).",
+  speed:"Speed",
   secInput:"Input", secMoves:"Moves & changes", secMacros:"Macros",
   viewNet:"Net", hint3d:"Drag to rotate the cube, scroll to zoom, double-click resets the view. “Next ▶” and “Play” animate the moves.", no3d:"3D unavailable: lib/three.min.js is missing or WebGL is disabled."
 },
@@ -267,6 +272,7 @@ es:{
   dGears:"Engranajes (ángulo = giro propio antihorario)", dGearSpin:"{s} gira en su sitio",
   dCorners:"Esquinas", dCornerTwist:"{s} orientada", dEC:"Aristas y centros", dCenterRot:"{s} girado en su sitio ({a}°)", dECRot:"{s} girado/volteado en su sitio",
   dNone:"Sin cambios: la secuencia es la identidad (para esta posición).",
+  speed:"Velocidad",
   secInput:"Entrada", secMoves:"Movimientos y cambios", secMacros:"Macros",
   viewNet:"Desarrollo", hint3d:"Arrastra para girar el cubo, la rueda del ratón hace zoom, doble clic restablece la vista. «Adelante ▶» y «Reproducir» animan los movimientos.", no3d:"3D no disponible: falta lib/three.min.js o WebGL está desactivado."
 }};
@@ -649,7 +655,7 @@ function draw(animate=false){
   const nq=steps[cur]?steps[cur].moves[0]:null;
   $("netBefore").innerHTML=render(before,{markers:mk});
   $("netAfter").innerHTML=render(after,{changed:ch,markers:mk});
-  if(view==="3d"){if(animate&&cur>0)anim3d=Cube3D.play(states[cur-1],steps[cur-1].moves);else{Cube3D.show(states[cur]);anim3d=null;}}
+  if(view==="3d"){if(animate&&cur>0)anim3d=Cube3D.play(states[cur-1],steps[cur-1].moves,SPEED3D[speed()]);else{Cube3D.show(states[cur]);anim3d=null;}}
   else $("netStep").innerHTML=render(states[cur],{nextMove:nq,markers:mk});
   $("lblBefore").textContent=$("setup").value.trim()||t("solved");
   const nQ=steps.reduce((n,s)=>n+s.moves.length,0);
@@ -669,15 +675,20 @@ $("first").onclick=()=>{cur=0;draw();};
 $("last").onclick=()=>{cur=steps.length;draw();};
 $("prev").onclick=()=>{if(cur>0){cur--;draw();}};
 $("next").onclick=()=>{if(cur<steps.length){cur++;draw(true);}};
+// Tempo: Dauer pro Viertelzug (3D) bzw. pro Schritt (Netz) in ms, Regler 0 = langsam … 4 = schnell
+const SPEED3D=[900,600,400,250,150],SPEED2D=[1400,1000,700,450,250];
+const speed=()=>+$("speed").value;
+{const s=store.get("mgcSpeed");if(s!==null&&s>=0&&s<=4)$("speed").value=s;}
+$("speed").oninput=()=>store.set("mgcSpeed",$("speed").value);
 // Abspielen: im Netz alle 700 ms ein Schritt, in 3D jeweils nach Ende der Animation
 $("play").onclick=async()=>{
-  if(timer){timer=null;$("play").textContent=t("play");return;}
+  if(timer){timer=null;Cube3D.stop();$("play").textContent=t("play");return;}
   const me=timer={};$("play").textContent=t("pause");
   if(cur>=steps.length){cur=0;draw();}
   while(timer===me&&cur<steps.length){
     cur++;draw(true);
     if(view==="3d"&&anim3d){await anim3d;await new Promise(r=>setTimeout(r,150));}
-    else await new Promise(r=>setTimeout(r,700));
+    else await new Promise(r=>setTimeout(r,SPEED2D[speed()]));
   }
   if(timer===me){timer=null;$("play").textContent=t("play");}
 };
