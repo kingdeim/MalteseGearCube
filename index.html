@@ -181,7 +181,7 @@ details summary{cursor:pointer;color:var(--muted);font-size:14px}
 </main>
 
 <script src="lib/three.min.js"></script>
-<script src="cube3d.js?v=1.4.1"></script>
+<script src="cube3d.js?v=1.5.0"></script>
 <script>
 "use strict";
 // ---------- Sprachen / i18n ----------
@@ -212,6 +212,7 @@ de:{
   dGears:"Zahnräder (Winkel = Eigendrehung gegen den Uhrzeigersinn)", dGearSpin:"{s} dreht sich auf der Stelle",
   dCorners:"Ecken", dCornerTwist:"{s} verdreht", dEC:"Kanten & Mitten", dCenterRot:"{s} auf der Stelle gedreht ({a}°)", dECRot:"{s} auf der Stelle gedreht/gekippt",
   dNone:"Keine Veränderung – die Zugfolge ist (für diese Stellung) die Identität.",
+  qInfo:" · Vierteldrehung {k}/{m} von {s}",
   speed:"Tempo",
   secInput:"Eingabe", secMoves:"Züge & Veränderungen", secMacros:"Makros",
   viewNet:"Netz", hint3d:"Ziehen dreht den Würfel, Mausrad zoomt, Doppelklick setzt die Ansicht zurück. Mit „Vor ▶“ und „Abspielen“ werden die Züge animiert.", no3d:"3D nicht verfügbar: lib/three.min.js fehlt oder WebGL ist deaktiviert."
@@ -242,6 +243,7 @@ en:{
   dGears:"Gears (angle = own rotation counterclockwise)", dGearSpin:"{s} spins in place",
   dCorners:"Corners", dCornerTwist:"{s} twisted", dEC:"Edges & centers", dCenterRot:"{s} rotated in place ({a}°)", dECRot:"{s} rotated/flipped in place",
   dNone:"No change – the sequence is the identity (for this position).",
+  qInfo:" · quarter turn {k}/{m} of {s}",
   speed:"Speed",
   secInput:"Input", secMoves:"Moves & changes", secMacros:"Macros",
   viewNet:"Net", hint3d:"Drag to rotate the cube, scroll to zoom, double-click resets the view. “Next ▶” and “Play” animate the moves.", no3d:"3D unavailable: lib/three.min.js is missing or WebGL is disabled."
@@ -272,6 +274,7 @@ es:{
   dGears:"Engranajes (ángulo = giro propio antihorario)", dGearSpin:"{s} gira en su sitio",
   dCorners:"Esquinas", dCornerTwist:"{s} orientada", dEC:"Aristas y centros", dCenterRot:"{s} girado en su sitio ({a}°)", dECRot:"{s} girado/volteado en su sitio",
   dNone:"Sin cambios: la secuencia es la identidad (para esta posición).",
+  qInfo:" · cuarto de vuelta {k}/{m} de {s}",
   speed:"Velocidad",
   secInput:"Entrada", secMoves:"Movimientos y cambios", secMacros:"Macros",
   viewNet:"Desarrollo", hint3d:"Arrastra para girar el cubo, la rueda del ratón hace zoom, doble clic restablece la vista. «Adelante ▶» y «Reproducir» animan los movimientos.", no3d:"3D no disponible: falta lib/three.min.js o WebGL está desactivado."
@@ -628,7 +631,7 @@ function describeDiff(st0,st1){
 
 // ---------- UI ----------
 const $=id=>document.getElementById(id);
-let steps=[],states=[],cur=0,timer=null,before=null,view="net",anim3d=null;
+let steps=[],timer=null,before=null,view="net",anim3d=null;
 const store={get(k){try{return localStorage.getItem(k);}catch(e){return null;}},set(k,v){try{localStorage.setItem(k,v);}catch(e){}}};
 function loadMacros(txt){
   const {macros,errs}=parseMacroText(txt);MACROS=macros;
@@ -637,58 +640,70 @@ function loadMacros(txt){
   $("macroErr").textContent=errs.join("\n");
   $("macroPad").innerHTML=Object.keys(MACROS).map(n=>`<button data-m="${n}" title="${MACROS[n].replace(/"/g,"&quot;")}">${n}</button>`).join("");
 }
+// Position = Anzahl ausgeführter Vierteldrehungen (0 … Q). „Vor“/„Zurück“ gehen eine
+// Vierteldrehung weiter, die Chips springen an den Anfang eines Schritts.
+// quarters: alle Vierteldrehungen, qStates[k]: Stellung nach k Vierteldrehungen,
+// bounds[i]: Position am Anfang von Schritt i (bounds[n] = Q).
+let quarters=[],qStates=[],bounds=[0],pos=0,playFrom=0;
+const Q=()=>quarters.length;
+const stepAt=p=>{let i=0;while(i<steps.length&&bounds[i+1]<=p)i++;return i;}; // Schritt, in dem p liegt (n = Ende)
 function compute(){
   $("err").textContent="";
   let setup,alg;
   try{setup=parse($("setup").value);}catch(e){$("err").textContent=t("errSetup",{msg:e.message});return;}
   try{alg=parse($("alg").value);}catch(e){$("err").textContent=t("errAlg",{msg:e.message});return;}
   steps=$("expand").checked?alg.flatMap(st=>st.macro?compress(st.moves).map((x,i,arr)=>({...x,from:st.label,first:i===0})):[st]):alg;
-  before=applySteps(solved(),setup);states=[clone(before)];
-  for(const st of steps)states.push(applyStep(clone(states[states.length-1]),st));
-  cur=Math.min(cur,steps.length);
+  before=applySteps(solved(),setup);
+  quarters=steps.flatMap(s=>s.moves);bounds=[0];for(const s of steps)bounds.push(bounds[bounds.length-1]+s.moves.length);
+  qStates=[clone(before)];for(const q of quarters){const s=clone(qStates[qStates.length-1]);applyQ(s,q);qStates.push(s);}
+  pos=Math.min(pos,Q());
   store.set("mgc",JSON.stringify({setup:$("setup").value,alg:$("alg").value}));
   draw();
 }
-function draw(animate=false){
-  const after=states[states.length-1],mk=$("markers").checked;
+// from: Position, von der aus zur aktuellen Position animiert wird (nur in 3D)
+function draw(from=null){
+  const after=qStates[Q()],mk=$("markers").checked,cur=stepAt(pos);
   const sa=signature(index(before)),sb=signature(index(after)),ch=new Set(Object.keys(sa).filter(k=>sa[k]!==sb[k]));
-  const nq=steps[cur]?steps[cur].moves[0]:null;
   $("netBefore").innerHTML=render(before,{markers:mk});
   $("netAfter").innerHTML=render(after,{changed:ch,markers:mk});
-  // animate: true/"fwd" = vorwärts zum aktuellen Schritt, "back" = rückwärts (Umkehrung des nächsten Schritts)
-  if(view==="3d"){if(animate==="back"&&steps[cur])anim3d=Cube3D.play(states[cur+1],invQ(steps[cur].moves),SPEED3D[speed()]);
-    else if(animate&&animate!=="back"&&cur>0)anim3d=Cube3D.play(states[cur-1],steps[cur-1].moves,SPEED3D[speed()]);else{Cube3D.show(states[cur]);anim3d=null;}}
-  else $("netStep").innerHTML=render(states[cur],{nextMove:nq,markers:mk});
+  if(view==="3d"){
+    if(from!==null&&from<pos)anim3d=Cube3D.play(qStates[from],quarters.slice(from,pos),SPEED3D[speed()]);
+    else if(from!==null&&from>pos)anim3d=Cube3D.play(qStates[from],invQ(quarters.slice(pos,from)),SPEED3D[speed()]);
+    else{Cube3D.show(qStates[pos]);anim3d=null;}
+  }else $("netStep").innerHTML=render(qStates[pos],{nextMove:quarters[pos]||null,markers:mk});
   $("lblBefore").textContent=$("setup").value.trim()||t("solved");
-  const nQ=steps.reduce((n,s)=>n+s.moves.length,0);
-  $("lblAfter").textContent=t("stepsInfo",{s:steps.length,q:nQ});
-  $("lblStep").textContent=`${cur}/${steps.length}`+(steps[cur]?t("nextInfo",{m:steps[cur].label})+(steps[cur].from?t("fromInfo",{m:steps[cur].from}):""):"");
+  $("lblAfter").textContent=t("stepsInfo",{s:steps.length,q:Q()});
+  const inStep=steps[cur]&&pos>bounds[cur];
+  $("lblStep").textContent=`${inStep?cur+1:cur}/${steps.length}`+
+    (inStep?t("qInfo",{k:pos-bounds[cur],m:steps[cur].moves.length,s:steps[cur].label})
+     :steps[cur]?t("nextInfo",{m:steps[cur].label})+(steps[cur].from?t("fromInfo",{m:steps[cur].from}):""):"");
   $("chips").innerHTML=steps.map((m,i)=>(m.first?`<span class="lbl" style="margin:4px 0 0 4px">${m.from}:</span>`:"")+
-    `<span class="chip ${m.macro?"macro":""} ${i<cur?"done":""} ${i===cur?"cur":""}" data-i="${i}" title="${m.macro?m.macro.text.replace(/"/g,"&quot;"):""}">${m.label}</span>`).join("")
-    +`<span class="chip ${cur===steps.length?"cur":""}" data-i="${steps.length}">${t("end")}</span>`;
+    `<span class="chip ${m.macro?"macro":""} ${bounds[i+1]<=pos?"done":""} ${i===cur?"cur":""}" data-i="${i}" title="${m.macro?m.macro.text.replace(/"/g,"&quot;"):""}">${m.label}</span>`).join("")
+    +`<span class="chip ${pos===Q()?"cur":""}" data-i="${steps.length}">${t("end")}</span>`;
   $("diff").innerHTML=describeDiff(before,after);
 }
-$("chips").addEventListener("click",e=>{const i=e.target.dataset.i;if(i!==undefined){cur=+i;draw();}});
-$("apply").onclick=()=>{cur=0;compute();};
-for(const id of["setup","alg"])$(id).addEventListener("keydown",e=>{if(e.key==="Enter"){cur=0;compute();}});
-$("expand").onchange=()=>{cur=0;compute();};
-$("markers").onchange=draw;
-$("first").onclick=()=>{cur=0;draw();};
-$("last").onclick=()=>{cur=steps.length;draw();};
-$("prev").onclick=()=>{if(cur>0){cur--;draw("back");}};
-$("next").onclick=()=>{if(cur<steps.length){cur++;draw(true);}};
+const go=(p,animate)=>{if(p<0||p>Q())return;const from=pos;pos=p;draw(animate?from:null);};
+$("chips").addEventListener("click",e=>{const i=e.target.dataset.i;if(i!==undefined)go(bounds[+i],false);});
+$("apply").onclick=()=>{pos=0;compute();};
+for(const id of["setup","alg"])$(id).addEventListener("keydown",e=>{if(e.key==="Enter"){pos=0;compute();}});
+$("expand").onchange=()=>{pos=0;compute();};
+$("markers").onchange=()=>draw();
+$("first").onclick=()=>go(0,false);
+$("last").onclick=()=>go(Q(),false);
+$("prev").onclick=()=>go(pos-1,true);
+$("next").onclick=()=>go(pos+1,true);
 // Tempo: Dauer pro Viertelzug (3D) bzw. pro Schritt (Netz) in ms, Regler 0 = langsam … 4 = schnell
 const SPEED3D=[900,600,400,250,150],SPEED2D=[1400,1000,700,450,250];
 const speed=()=>+$("speed").value;
 {const s=store.get("mgcSpeed");if(s!==null&&s>=0&&s<=4)$("speed").value=s;}
 $("speed").oninput=()=>store.set("mgcSpeed",$("speed").value);
-// Abspielen: im Netz alle 700 ms ein Schritt, in 3D jeweils nach Ende der Animation
+// Abspielen: bis zum Ende, jeweils bis zur nächsten Schrittgrenze; in 3D nach Ende der Animation
 $("play").onclick=async()=>{
-  if(timer){timer=null;Cube3D.stop();$("play").textContent=t("play");return;}
+  if(timer){timer=null;const done=Cube3D.stop();if(done!==null){pos=playFrom+done;draw();}$("play").textContent=t("play");return;}
   const me=timer={};$("play").textContent=t("pause");
-  if(cur>=steps.length){cur=0;draw();}
-  while(timer===me&&cur<steps.length){
-    cur++;draw(true);
+  if(pos>=Q())go(0,false);
+  while(timer===me&&pos<Q()){
+    playFrom=pos;go(bounds[stepAt(pos)+1],true);
     if(view==="3d"&&anim3d){await anim3d;await new Promise(r=>setTimeout(r,150));}
     else await new Promise(r=>setTimeout(r,SPEED2D[speed()]));
   }
@@ -701,7 +716,7 @@ function setView(v){
   $("vNet").classList.toggle("on",v==="net");$("v3d").classList.toggle("on",v==="3d");
   $("netStep").hidden=v==="3d";$("view3d").hidden=v!=="3d";
   $("legendStep").hidden=v==="3d";$("legend3d").hidden=v!=="3d";
-  if(states.length)draw();
+  if(qStates.length)draw();
 }
 // Reiter (nur auf schmalen Bildschirmen sichtbar): Schritt / Vorher / Nachher
 function setTab(tab){
@@ -724,7 +739,7 @@ setTab(["step","before","after"].includes(store.get("mgcTab"))?store.get("mgcTab
 }
 $("vNet").onclick=()=>setView("net");
 $("v3d").onclick=()=>setView("3d");
-$("invert").onclick=()=>{try{$("alg").value=parse($("alg").value).reverse().map(invertStep).map(m=>m.label).join(" ");cur=0;compute();}catch(e){$("err").textContent=e.message;}};
+$("invert").onclick=()=>{try{$("alg").value=parse($("alg").value).reverse().map(invertStep).map(m=>m.label).join(" ");pos=0;compute();}catch(e){$("err").textContent=e.message;}};
 $("theme").onclick=()=>{const r=document.documentElement,dark=r.dataset.theme?r.dataset.theme==="dark":matchMedia("(prefers-color-scheme: dark)").matches;r.dataset.theme=dark?"light":"dark";};
 const renderPad=()=>{$("pad").innerHTML=["R","L","U","D","F","B"].flatMap(f=>[f,f+"'",f+"2",f+"4"]).concat(["x","y","z"]).map(m=>`<button data-m="${m}">${m}</button>`).join("")+`<button data-m="undo" title="${t("undo")}">⌫</button>`;};
 // Sprache: statische Texte setzen; Standard aus gespeicherter Wahl oder Browsersprache
@@ -746,7 +761,7 @@ applyLang(store.get("mgcLang")||(navigator.language||"en").slice(0,2).toLowerCas
 function padClick(e){const m=e.target.dataset.m;if(!m)return;
   if(m==="undo"){try{const s=parse($("alg").value);s.pop();$("alg").value=s.map(x=>x.label).join(" ");}catch(err){}}
   else $("alg").value=($("alg").value.trim()+" "+m).trim();
-  compute();cur=steps.length;draw();}
+  compute();pos=Q();draw();}
 $("pad").addEventListener("click",padClick);
 $("macroPad").addEventListener("click",padClick);
 $("macroApply").onclick=()=>{store.set("mgcMacros",$("macros").value);loadMacros($("macros").value);compute();};

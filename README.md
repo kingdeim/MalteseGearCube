@@ -20,7 +20,8 @@ switchable in the top-right corner.
 - Invert a sequence, optionally expand macros into single moves
 - Face graphics traced from a photo of the real puzzle (corner stars, asymmetric gears)
 - **3D view** with animated moves: switch the Step panel between "Net" and "3D";
-  "Next ▶" and "Play" animate every quarter turn (half 90°, middle ring 45°, gears spinning).
+  "Next ▶" / "◀ Back" go one quarter turn at a time (so `R100` can be followed turn by turn),
+  the step chips jump to the start of a step, and "Play" runs to the end – animating every quarter turn (half 90°, middle ring 45°, gears spinning).
   Drag to rotate, scroll to zoom, double-click to reset the view; a slider sets the speed.
 - Mobile layout: the cube view comes first; on small screens "Step", "Before" and "After" are
   tabs, and the input, moves/changes and macro sections can be collapsed (state is remembered).
@@ -136,10 +137,11 @@ The 3D scene is built from the simulation state, piece by piece. Every piece is 
 (three.js `ExtrudeGeometry`, quadratic curves through the smoothed points); the coloured
 stickers are very thin films on black bodies. A fixed black sphere represents the core.
 
-- **Corners** (all eight identical): a black base cube up to `CORNER_FLOOR` (0.76) on all three
-  sides, with the hollow cube corner cut out as a clean cube, plus on each face an equally high
-  prism that follows the star outline, with the coloured film on top. The base lies deep enough
-  that tilted gears are never hidden. The three middle rings stay free.
+- **Corners** (all eight identical): a base up to `CORNER_FLOOR` (0.76) plus, on each face, a body
+  that is flush with the surface, with round pockets (`GEAR_POCKET`) around the neighbouring gears so
+  tilted gears are never hidden. The star is a prism whose teeth reach into these pockets; the
+  coloured film lies flush on top. The hollow cube corner is cut out on all levels at `HOLE0`, so it
+  is a clean inverted cube. The three middle rings stay free.
 - **Edges and centers** are rigid pieces inside the middle ring: a center is a column, an edge is
   a small head at the cube edge and a diagonal stem of the same width, extruded as one piece
   (pentagon cross-section). Each one is built in its solved pose and transformed by its rotation
@@ -150,7 +152,8 @@ stickers are very thin films on black bodies. A fixed black sphere represents th
   (25°) towards the cube edge. In the solved orientation a gear lies flat; turned by 90° it stands
   tilted across a diagonal, and turned by 180° it is tilted the most (twice the axle angle).
 
-A step is animated one quarter turn at a time. For each quarter turn the state before and
+The position is counted in quarter turns: `qStates[k]` is the state after k quarter turns and
+`bounds[i]` the position where step i starts. A step is animated one quarter turn at a time. For each quarter turn the state before and
 after is known, and every piece gets a motion function of t ∈ [0, 1]:
 
 - pieces in the turning half (and all pieces for `x y z`) rotate rigidly by 90°,
@@ -162,7 +165,7 @@ The scene is built only once per step: each quarter turn sets the group matrix t
 *motion(t) · pose before the quarter turn*, so even `R100` runs smoothly. Only the first and last
 quarter turn of a step accelerate and decelerate; in between the speed is constant. The speed
 slider sets the duration per quarter turn (900 … 150 ms). "◀ Back" plays the inverse of the step backwards. `Cube3D.stop()` ends an animation
-immediately and shows the final position – used by "Pause" and by any navigation.
+immediately at the quarter turn that is running and reports how many are done – used by "Pause" and by any navigation.
 Rendering is on demand (only while animating or when the view changes); the camera is a small
 orbit control written for pointer events, so it works with mouse and touch.
 

@@ -11,6 +11,7 @@ const Cube3D=(()=>{
   const EDGE_HEAD=0.84,EDGE_HW=0.095,STEM_IN=0.45; // Kantenkopf ab 0.84, halbe Breite längs der Kante, Stielbeginn
   const GEAR_TILT=25; // Neigung der Zahnradachse in Grad (180° gedreht → doppelt so schief)
   const CORNER_FLOOR=0.76; // Sockel der Ecken: so tief, dass gekippte Zahnräder nie verdeckt werden
+  const GEAR_POCKET=0.32; // Radius der Mulden im Eckkörper rund um die Zahnräder
 
   // ---------- Materialien ----------
   const mats={};
@@ -45,21 +46,36 @@ const Cube3D=(()=>{
     const g=new THREE.BoxGeometry(x1-x0,y1-y0,z1-z0);g.translate((x0+x1)/2,(y0+y1)/2,(z0+z1)/2);
     return new THREE.Mesh(g,material);
   }
-  let STAR_P,GEAR_P;
+  let STAR_P,GEAR_P,CORNER_TL;
 
   // ---------- Teile aufbauen ----------
+  // Umriss des Eckkörpers im Viertel oben links (u,v < 0): Viertelquadrat ohne Mittelringe,
+  // ohne die hohle Würfelecke und ohne zwei runde Mulden um die benachbarten Zahnräder.
+  function cornerOutlineTL(){
+    const W=RING_W,N=HOLE0,g=GEAR_DRAW,R=GEAR_POCKET,s=Math.sqrt(R*R-W*W),pts=[];
+    const arc=(cu,cv,a0,a1)=>{const n=14;for(let k=0;k<=n;k++){const a=a0+(a1-a0)*k/n;pts.push([cu+R*Math.cos(a),cv+R*Math.sin(a)]);}};
+    pts.push([-N,-1],[-W,-1],[-W,-g-s]);
+    arc(0,-g,Math.atan2(-s,-W),Math.atan2(s,-W)-2*Math.PI); // Mulde am Zahnrad oben (Bogen über die Seite u<0)
+    pts.push([-W,-W],[-g+s,-W]);
+    arc(-g,0,Math.atan2(-W,s),Math.atan2(-W,-s)); // Mulde am Zahnrad links
+    pts.push([-1,-W],[-1,-N],[-N,-N]);
+    return pts;
+  }
   function cornerGroup(c){
     const g=new THREE.Group(),[sx,sy,sz]=c.pos,N=HOLE0,F=CORNER_FLOOR;
     const B=(a0,a1,b0,b1,c0,c1)=>{const iv=(s,p,q)=>s>0?[p,q]:[-q,-p];
       const[X0,X1]=iv(sx,a0,a1),[Y0,Y1]=iv(sy,b0,b1),[Z0,Z1]=iv(sz,c0,c1);g.add(box(X0,X1,Y0,Y1,Z0,Z1,BODY));};
-    // Sockel: Würfel bis CORNER_FLOOR (auf allen drei Seiten gleich tief), aus dem die hohle
-    // Würfelecke als sauberer Würfel ausgespart ist – drei Quader, für alle Ecken identisch
+    // Sockel bis CORNER_FLOOR; die hohle Würfelecke ist ausgespart (drei Quader)
     B(RING_W,N,RING_W,F,RING_W,F);B(N,F,RING_W,N,RING_W,F);B(N,F,N,F,RING_W,N);
-    // Auf jeder Seite ein gleich hohes Prisma in Sternform (folgt der Farbfläche) plus dünne Farbschicht
+    // Auf jeder Seite: bündiger Körper bis zur Oberfläche (mit Mulden für die Zahnräder),
+    // darauf der Stern als Prisma (seine Zacken greifen in die Mulden) und die dünne Farbschicht.
+    // Die Wände der hohlen Ecke liegen dadurch alle in den Ebenen x/y/z = HOLE0: ein umgedrehter Würfel.
     for(const face of ORDER){const n=FACES[face];if(dot(n,c.pos)<=0.5)continue;
       const[r,d]=FRAME[face],su=Math.sign(dot(c.pos,r)),sv=Math.sign(dot(c.pos,d));
       const col=homeFace(c.R,P3(face,su*0.5,sv*0.5));
-      const deg={"-1,-1":0,"1,-1":90,"1,1":180,"-1,1":270}[su+","+sv],pts=rotUV(STAR_P,deg);
+      const deg={"-1,-1":0,"1,-1":90,"1,1":180,"-1,1":270}[su+","+sv];
+      g.add(plate(face,rotUV(CORNER_TL,deg),BODY,false,F,SURF-F));
+      const pts=rotUV(STAR_P,deg);
       g.add(plate(face,pts,BODY,true,F,SURF-F));
       g.add(plate(face,pts,faceMat(col),true));
     }
@@ -177,7 +193,7 @@ const Cube3D=(()=>{
       const n=quarters.length;let st=clone(st0),i=0,mv=null,base=null,t0=0;
       const begin=start=>{const end=clone(st);applyQ(end,quarters[i]);mv=motions(st,end,quarters[i]);st=end;
         base=new Map(pieces.map(p=>[p,p.group.matrix.clone()]));t0=start;};
-      anim={resolve,frame:now=>{
+      anim={resolve,snap:()=>({st,done:Math.min(i+1,n)}),frame:now=>{
         if(!mv)begin(now);
         const t=Math.min(1,(now-t0)/per);
         const e=n===1?ease(t):i===0?easeIn(t):i===n-1?easeOut(t):t;
@@ -192,8 +208,9 @@ const Cube3D=(()=>{
       loop();
     });
   }
-  // Bricht eine laufende Animation sofort ab und zeigt die Endstellung
-  function stop(){if(anim){const r=anim.resolve;anim=null;if(finalState){build(finalState);finalState=null;}r();}}
+  // Bricht eine laufende Animation sofort ab und zeigt die Stellung nach der gerade laufenden
+  // Vierteldrehung; liefert die Zahl der damit fertigen Vierteldrehungen (oder null)
+  function stop(){if(!anim)return null;const r=anim.resolve,s=anim.snap();anim=null;finalState=null;build(s.st);r();return s.done;}
 
   // ---------- Szene, Kamera, Bedienung ----------
   function placeCamera(){
@@ -219,7 +236,7 @@ const Cube3D=(()=>{
     if(renderer){el.appendChild(renderer.domElement);resize();return true;}
     if(typeof THREE==="undefined")return false;
     BODY=new THREE.MeshStandardMaterial({color:0x141416,roughness:0.35,metalness:0.15});
-    STAR_P=smoothPts(STAR_TL);GEAR_P=smoothPts(GEAR_PATH);
+    STAR_P=smoothPts(STAR_TL);GEAR_P=smoothPts(GEAR_PATH);CORNER_TL=cornerOutlineTL();
     renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});
     renderer.setPixelRatio(Math.min(2,window.devicePixelRatio||1));
     scene=new THREE.Scene();world=new THREE.Group();scene.add(world);

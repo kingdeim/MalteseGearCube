@@ -3,6 +3,18 @@
 All notable changes to this project are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.5.0] – 2026-10-23
+
+### Changed
+- Navigation in quarter turns: "Next ▶" and "◀ Back" move one quarter turn (e.g. inside `R100`),
+  the step display shows "quarter turn k/m of …"; the chips still jump to the start of a step.
+- "Pause" stops at the quarter turn that is currently running.
+- 3D: corner bodies are flush with the surface again, so all coloured stickers lie on one level;
+  round pockets around the gears give tilted gears room. The hollow corner is a clean inverted cube.
+
+### Fixed
+- On phones, "Next ▶" on a long step like `R100` played the whole step like "Play".
+
 ## [1.4.1] – 2026-10-23
 
 ### Added
