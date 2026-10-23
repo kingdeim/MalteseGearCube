@@ -181,7 +181,7 @@ details summary{cursor:pointer;color:var(--muted);font-size:14px}
 </main>
 
 <script src="lib/three.min.js"></script>
-<script src="cube3d.js?v=1.4.0"></script>
+<script src="cube3d.js?v=1.4.1"></script>
 <script>
 "use strict";
 // ---------- Sprachen / i18n ----------
@@ -655,7 +655,9 @@ function draw(animate=false){
   const nq=steps[cur]?steps[cur].moves[0]:null;
   $("netBefore").innerHTML=render(before,{markers:mk});
   $("netAfter").innerHTML=render(after,{changed:ch,markers:mk});
-  if(view==="3d"){if(animate&&cur>0)anim3d=Cube3D.play(states[cur-1],steps[cur-1].moves,SPEED3D[speed()]);else{Cube3D.show(states[cur]);anim3d=null;}}
+  // animate: true/"fwd" = vorwärts zum aktuellen Schritt, "back" = rückwärts (Umkehrung des nächsten Schritts)
+  if(view==="3d"){if(animate==="back"&&steps[cur])anim3d=Cube3D.play(states[cur+1],invQ(steps[cur].moves),SPEED3D[speed()]);
+    else if(animate&&animate!=="back"&&cur>0)anim3d=Cube3D.play(states[cur-1],steps[cur-1].moves,SPEED3D[speed()]);else{Cube3D.show(states[cur]);anim3d=null;}}
   else $("netStep").innerHTML=render(states[cur],{nextMove:nq,markers:mk});
   $("lblBefore").textContent=$("setup").value.trim()||t("solved");
   const nQ=steps.reduce((n,s)=>n+s.moves.length,0);
@@ -673,7 +675,7 @@ $("expand").onchange=()=>{cur=0;compute();};
 $("markers").onchange=draw;
 $("first").onclick=()=>{cur=0;draw();};
 $("last").onclick=()=>{cur=steps.length;draw();};
-$("prev").onclick=()=>{if(cur>0){cur--;draw();}};
+$("prev").onclick=()=>{if(cur>0){cur--;draw("back");}};
 $("next").onclick=()=>{if(cur<steps.length){cur++;draw(true);}};
 // Tempo: Dauer pro Viertelzug (3D) bzw. pro Schritt (Netz) in ms, Regler 0 = langsam … 4 = schnell
 const SPEED3D=[900,600,400,250,150],SPEED2D=[1400,1000,700,450,250];

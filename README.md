@@ -136,9 +136,10 @@ The 3D scene is built from the simulation state, piece by piece. Every piece is 
 (three.js `ExtrudeGeometry`, quadratic curves through the smoothed points); the coloured
 stickers are very thin films on black bodies. A fixed black sphere represents the core.
 
-- **Corners:** a small inner block plus, on each of the three faces, a black prism that follows
-  the star outline (so the corner never hides neighbouring gears) with the coloured film on top.
-  The hollow cube corner and the three middle rings stay free.
+- **Corners** (all eight identical): a black base cube up to `CORNER_FLOOR` (0.76) on all three
+  sides, with the hollow cube corner cut out as a clean cube, plus on each face an equally high
+  prism that follows the star outline, with the coloured film on top. The base lies deep enough
+  that tilted gears are never hidden. The three middle rings stay free.
 - **Edges and centers** are rigid pieces inside the middle ring: a center is a column, an edge is
   a small head at the cube edge and a diagonal stem of the same width, extruded as one piece
   (pentagon cross-section). Each one is built in its solved pose and transformed by its rotation
@@ -160,7 +161,7 @@ after is known, and every piece gets a motion function of t ∈ [0, 1]:
 The scene is built only once per step: each quarter turn sets the group matrix to
 *motion(t) · pose before the quarter turn*, so even `R100` runs smoothly. Only the first and last
 quarter turn of a step accelerate and decelerate; in between the speed is constant. The speed
-slider sets the duration per quarter turn (900 … 150 ms). `Cube3D.stop()` ends an animation
+slider sets the duration per quarter turn (900 … 150 ms). "◀ Back" plays the inverse of the step backwards. `Cube3D.stop()` ends an animation
 immediately and shows the final position – used by "Pause" and by any navigation.
 Rendering is on demand (only while animating or when the view changes); the camera is a small
 orbit control written for pointer events, so it works with mouse and touch.

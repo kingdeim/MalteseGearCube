@@ -3,6 +3,16 @@
 All notable changes to this project are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.4.1] – 2026-10-23
+
+### Added
+- "◀ Back" is animated as well (the step is played backwards).
+
+### Changed
+- 3D: all corners are built the same way – a flat base on one common level with the hollow
+  corner cut out as a clean cube, plus equally high star prisms. No more offset edges in the
+  hollow corners.
+
 ## [1.4.0] – 2026-10-23
 
 ### Added

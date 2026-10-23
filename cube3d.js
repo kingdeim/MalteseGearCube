@@ -10,6 +10,7 @@ const Cube3D=(()=>{
   const RING_W=0.12,RING_IN=0.6,CORE_R=0.62; // halbe Breite des Mittelrings, Innenkante der Mitten, Kern
   const EDGE_HEAD=0.84,EDGE_HW=0.095,STEM_IN=0.45; // Kantenkopf ab 0.84, halbe Breite längs der Kante, Stielbeginn
   const GEAR_TILT=25; // Neigung der Zahnradachse in Grad (180° gedreht → doppelt so schief)
+  const CORNER_FLOOR=0.76; // Sockel der Ecken: so tief, dass gekippte Zahnräder nie verdeckt werden
 
   // ---------- Materialien ----------
   const mats={};
@@ -48,17 +49,18 @@ const Cube3D=(()=>{
 
   // ---------- Teile aufbauen ----------
   function cornerGroup(c){
-    const g=new THREE.Group(),[sx,sy,sz]=c.pos,N=HOLE0;
-    // Innerer Block (bis knapp unter die Oberfläche) verbindet die drei Sternflügel
-    const iv=(s,p,q)=>s>0?[p,q]:[-q,-p];
-    const[X0,X1]=iv(sx,RING_W,N),[Y0,Y1]=iv(sy,RING_W,N),[Z0,Z1]=iv(sz,RING_W,N);
-    g.add(box(X0,X1,Y0,Y1,Z0,Z1,BODY));
-    // Auf jeder der drei Seiten: schwarzer Körper in Sternform (folgt der Farbfläche) plus dünne Farbschicht
+    const g=new THREE.Group(),[sx,sy,sz]=c.pos,N=HOLE0,F=CORNER_FLOOR;
+    const B=(a0,a1,b0,b1,c0,c1)=>{const iv=(s,p,q)=>s>0?[p,q]:[-q,-p];
+      const[X0,X1]=iv(sx,a0,a1),[Y0,Y1]=iv(sy,b0,b1),[Z0,Z1]=iv(sz,c0,c1);g.add(box(X0,X1,Y0,Y1,Z0,Z1,BODY));};
+    // Sockel: Würfel bis CORNER_FLOOR (auf allen drei Seiten gleich tief), aus dem die hohle
+    // Würfelecke als sauberer Würfel ausgespart ist – drei Quader, für alle Ecken identisch
+    B(RING_W,N,RING_W,F,RING_W,F);B(N,F,RING_W,N,RING_W,F);B(N,F,N,F,RING_W,N);
+    // Auf jeder Seite ein gleich hohes Prisma in Sternform (folgt der Farbfläche) plus dünne Farbschicht
     for(const face of ORDER){const n=FACES[face];if(dot(n,c.pos)<=0.5)continue;
       const[r,d]=FRAME[face],su=Math.sign(dot(c.pos,r)),sv=Math.sign(dot(c.pos,d));
       const col=homeFace(c.R,P3(face,su*0.5,sv*0.5));
       const deg={"-1,-1":0,"1,-1":90,"1,1":180,"-1,1":270}[su+","+sv],pts=rotUV(STAR_P,deg);
-      g.add(plate(face,pts,BODY,true,N,SURF-N));
+      g.add(plate(face,pts,BODY,true,F,SURF-F));
       g.add(plate(face,pts,faceMat(col),true));
     }
     return g;
