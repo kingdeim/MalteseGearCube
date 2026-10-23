@@ -3,6 +3,19 @@
 All notable changes to this project are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.5.1] – 2026-10-23
+
+### Changed
+- Star outline mirrored exactly at its diagonal, so the stars of neighbouring faces meet
+  symmetrically at the cube edges (2D and 3D).
+- 3D: corner bodies follow the star outline again; all coloured films (stars, gears, edges,
+  centers) have a thin black rim. The hollow corner is lined with flat walls up to the surface.
+- Version number shown next to the language selector.
+
+### Fixed
+- An error during an animation no longer freezes it; the final position is shown and the error
+  message is displayed (to help find the missing animation on some phones).
+
 ## [1.5.0] – 2026-10-23
 
 ### Changed

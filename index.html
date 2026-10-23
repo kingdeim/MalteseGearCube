@@ -26,6 +26,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 system-ui,-ap
 main{max-width:none;margin:0;padding:20px 16px 48px}
 h1{font-size:22px;margin:0 0 4px}
 .top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.ver{margin-left:auto;font-size:12px;color:var(--muted);font-family:ui-monospace,Consolas,monospace}
 select{font:inherit;font-size:14px;padding:5px 8px;border-radius:8px;border:1px solid var(--line);background:var(--chip);color:var(--ink)}
 .sub{color:var(--muted);margin:0 0 18px;font-size:14px}
 .panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:16px}
@@ -91,6 +92,7 @@ details summary{cursor:pointer;color:var(--muted);font-size:14px}
 <main>
   <div class="top">
     <h1 data-i18n="title"></h1>
+    <span class="ver" title="Version">v1.5.1</span>
     <select id="lang" aria-label="Language">
       <option value="de">Deutsch</option>
       <option value="en">English</option>
@@ -181,7 +183,7 @@ details summary{cursor:pointer;color:var(--muted);font-size:14px}
 </main>
 
 <script src="lib/three.min.js"></script>
-<script src="cube3d.js?v=1.5.0"></script>
+<script src="cube3d.js?v=1.5.1"></script>
 <script>
 "use strict";
 // ---------- Sprachen / i18n ----------
@@ -213,6 +215,7 @@ de:{
   dCorners:"Ecken", dCornerTwist:"{s} verdreht", dEC:"Kanten & Mitten", dCenterRot:"{s} auf der Stelle gedreht ({a}°)", dECRot:"{s} auf der Stelle gedreht/gekippt",
   dNone:"Keine Veränderung – die Zugfolge ist (für diese Stellung) die Identität.",
   qInfo:" · Vierteldrehung {k}/{m} von {s}",
+  animErr:"Animationsfehler (bitte melden): {msg}",
   speed:"Tempo",
   secInput:"Eingabe", secMoves:"Züge & Veränderungen", secMacros:"Makros",
   viewNet:"Netz", hint3d:"Ziehen dreht den Würfel, Mausrad zoomt, Doppelklick setzt die Ansicht zurück. Mit „Vor ▶“ und „Abspielen“ werden die Züge animiert.", no3d:"3D nicht verfügbar: lib/three.min.js fehlt oder WebGL ist deaktiviert."
@@ -244,6 +247,7 @@ en:{
   dCorners:"Corners", dCornerTwist:"{s} twisted", dEC:"Edges & centers", dCenterRot:"{s} rotated in place ({a}°)", dECRot:"{s} rotated/flipped in place",
   dNone:"No change – the sequence is the identity (for this position).",
   qInfo:" · quarter turn {k}/{m} of {s}",
+  animErr:"Animation error (please report): {msg}",
   speed:"Speed",
   secInput:"Input", secMoves:"Moves & changes", secMacros:"Macros",
   viewNet:"Net", hint3d:"Drag to rotate the cube, scroll to zoom, double-click resets the view. “Next ▶” and “Play” animate the moves.", no3d:"3D unavailable: lib/three.min.js is missing or WebGL is disabled."
@@ -275,6 +279,7 @@ es:{
   dCorners:"Esquinas", dCornerTwist:"{s} orientada", dEC:"Aristas y centros", dCenterRot:"{s} girado en su sitio ({a}°)", dECRot:"{s} girado/volteado en su sitio",
   dNone:"Sin cambios: la secuencia es la identidad (para esta posición).",
   qInfo:" · cuarto de vuelta {k}/{m} de {s}",
+  animErr:"Error de animación (por favor, infórmalo): {msg}",
   speed:"Velocidad",
   secInput:"Entrada", secMoves:"Movimientos y cambios", secMacros:"Macros",
   viewNet:"Desarrollo", hint3d:"Arrastra para girar el cubo, la rueda del ratón hace zoom, doble clic restablece la vista. «Adelante ▶» y «Reproducir» animan los movimientos.", no3d:"3D no disponible: falta lib/three.min.js o WebGL está desactivado."
@@ -498,10 +503,30 @@ const STAR_TL="M-0.474,-0.909L-0.475,-0.895L-0.48,-0.884L-0.475,-0.863L-0.478,-0
 // Zahnrad um die Achse zentriert; +x = Ausrichtung (gelöst: zur Würfelkante hin).
 const GEAR_PATH="M0.195,-0.225L0.158,-0.217L0.142,-0.209L0.132,-0.209L0.103,-0.191L0.097,-0.191L0.082,-0.178L0.067,-0.161L0.064,-0.145L0.057,-0.132L0.036,-0.071L0.026,-0.062L0.018,-0.059L-0.005,-0.062L-0.039,-0.054L-0.046,-0.061L-0.051,-0.076L-0.062,-0.084L-0.072,-0.105L-0.075,-0.118L-0.093,-0.15L-0.116,-0.164L-0.124,-0.164L-0.137,-0.172L-0.182,-0.172L-0.187,-0.175L-0.207,-0.153L-0.204,-0.126L-0.199,-0.111L-0.191,-0.092L-0.171,-0.067L-0.126,-0.051L-0.113,-0.043L-0.082,-0.036L-0.07,-0.024L-0.067,-0.016L-0.07,-0.005L-0.067,0.026L-0.064,0.029L-0.067,0.037L-0.079,0.046L-0.087,0.046L-0.103,0.059L-0.155,0.083L-0.175,0.105L-0.186,0.134L-0.188,0.176L-0.176,0.193L-0.163,0.193L-0.161,0.191L-0.15,0.193L-0.108,0.18L-0.095,0.172L-0.08,0.158L-0.062,0.108L-0.057,0.103L-0.041,0.066L-0.034,0.059L-0.021,0.062L0.032,0.059L0.046,0.074L0.088,0.155L0.108,0.175L0.161,0.199L0.203,0.204L0.205,0.207L0.229,0.207L0.233,0.203L0.233,0.195L0.238,0.189L0.238,0.168L0.236,0.166L0.238,0.155L0.233,0.147L0.23,0.126L0.212,0.095L0.2,0.083L0.195,0.083L0.187,0.072L0.168,0.07L0.161,0.064L0.121,0.054L0.116,0.049L0.076,0.038L0.064,0.024L0.067,-0.008L0.062,-0.024L0.064,-0.034L0.074,-0.043L0.084,-0.046L0.1,-0.057L0.118,-0.062L0.124,-0.067L0.132,-0.067L0.155,-0.08L0.179,-0.088L0.207,-0.116L0.217,-0.139L0.22,-0.153L0.217,-0.161L0.222,-0.166L0.222,-0.187L0.225,-0.189L0.222,-0.203L0.217,-0.211L0.205,-0.222Z";
 // Pixelstufen der abgepausten Konturen glätten (Laplace-Glättung) und als weiche Kurve ausgeben
+const parsePts=d=>d.replace(/[MZ]/g,"").split("L").map(s=>s.split(",").map(Number));
+// Stern exakt an der Diagonale u=v spiegeln (Hälfte mit u>v behalten), damit die Sterne zweier
+// angrenzender Seiten an der gemeinsamen Würfelkante deckungsgleich aufeinandertreffen
+function symDiag(p){
+  const n=p.length,f=q=>q[0]-q[1],cut=(a,b)=>{const t=f(a)/(f(a)-f(b));return[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t];};
+  let s=0;while(!(f(p[s])>0&&f(p[(s-1+n)%n])<=0))s++;
+  const half=[cut(p[(s-1+n)%n],p[s])];let i=s;
+  while(f(p[i])>0){half.push(p[i]);i=(i+1)%n;}
+  half.push(cut(p[(i-1+n)%n],p[i]));
+  return half.concat(half.slice(1,-1).reverse().map(([u,v])=>[v,u]));
+}
+const STAR_SYM=symDiag(parsePts(STAR_TL));
+// Pixelstufen glätten (Laplace); d = Pfad-String oder Punktliste
 function smoothPts(d,iter=2){
-  let p=d.replace(/[MZ]/g,"").split("L").map(s=>s.split(",").map(Number));
+  let p=typeof d==="string"?parsePts(d):d.map(q=>q.slice());
   for(let k=0;k<iter;k++)p=p.map((q,i)=>{const a=p[(i+p.length-1)%p.length],b=p[(i+1)%p.length];return[(a[0]+2*q[0]+b[0])/4,(a[1]+2*q[1]+b[1])/4];});
   return p;
+}
+// Umriss um d nach innen versetzen (für den schwarzen Rand um die Farbflächen)
+function insetPts(p,d){
+  const n=p.length;let area=0;for(let i=0;i<n;i++){const a=p[i],b=p[(i+1)%n];area+=a[0]*b[1]-b[0]*a[1];}
+  const s=area>0?1:-1;
+  return p.map((q,i)=>{const a=p[(i-1+n)%n],b=p[(i+1)%n],tx=b[0]-a[0],ty=b[1]-a[1],L=Math.hypot(tx,ty)||1;
+    return[q[0]-s*ty/L*d,q[1]+s*tx/L*d];});
 }
 function smoothPath(d,iter=2){
   const p=smoothPts(d,iter);
@@ -510,7 +535,7 @@ function smoothPath(d,iter=2){
   for(let i=0;i<n;i++)s+="Q"+p[i].map(f2).join(",")+" "+mid(p[i],p[(i+1)%n]).map(f2).join(",");
   return s+"Z";
 }
-const STAR_D=smoothPath(STAR_TL),GEAR_D=smoothPath(GEAR_PATH);
+const STAR_D=smoothPath(STAR_SYM),GEAR_D=smoothPath(GEAR_PATH);
 function cellsOf(R0){ // Zerlegung in Teilflächen zum Einfärben (Mixup: Teile können zweifarbig erscheinen)
   const xs=R0.map(p=>p[0]),ys=R0.map(p=>p[1]),u0=Math.min(...xs),u1=Math.max(...xs),v0=Math.min(...ys),v1=Math.max(...ys);
   const cu=(u0+u1)/2,cv=(v0+v1)/2,ring=[[u0,v0],[cu,v0],[u1,v0],[u1,cv],[u1,v1],[cu,v1],[u0,v1],[u0,cv]];
@@ -737,6 +762,7 @@ setTab(["step","before","after"].includes(store.get("mgcTab"))?store.get("mgcTab
     d.querySelector("summary").addEventListener("click",()=>setTimeout(()=>{folds[k]=d.open;store.set("mgcFold",JSON.stringify(folds));}));
   });
 }
+window.addEventListener("cube3d-error",e=>{$("err").textContent=t("animErr",{msg:e.detail});});
 $("vNet").onclick=()=>setView("net");
 $("v3d").onclick=()=>setView("3d");
 $("invert").onclick=()=>{try{$("alg").value=parse($("alg").value).reverse().map(invertStep).map(m=>m.label).join(" ");pos=0;compute();}catch(e){$("err").textContent=e.message;}};

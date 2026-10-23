@@ -121,7 +121,9 @@ Each face is drawn in local coordinates (−1…1) inside an SVG group. Corner s
 use paths that were traced automatically from a frontal product photo: the four symmetric
 copies on one face were overlaid (majority vote) to cancel perspective, contoured with
 marching squares, simplified (Ramer–Douglas–Peucker) and smoothed at runtime
-(`smoothPath()`). Gears are drawn rotated by their orientation vector `P`.
+(`smoothPath()`). Gears are drawn rotated by their orientation vector `P`. The traced star is mirrored
+exactly at its diagonal (`symDiag()`), so the stars of two neighbouring faces meet symmetrically at
+the shared cube edge.
 
 Edge and center stickers are split into small cells; each cell's 3D point is rotated back
 with the piece's `R⁻¹`, and the dominant axis of the result picks the colour. That is how
@@ -137,11 +139,10 @@ The 3D scene is built from the simulation state, piece by piece. Every piece is 
 (three.js `ExtrudeGeometry`, quadratic curves through the smoothed points); the coloured
 stickers are very thin films on black bodies. A fixed black sphere represents the core.
 
-- **Corners** (all eight identical): a base up to `CORNER_FLOOR` (0.76) plus, on each face, a body
-  that is flush with the surface, with round pockets (`GEAR_POCKET`) around the neighbouring gears so
-  tilted gears are never hidden. The star is a prism whose teeth reach into these pockets; the
-  coloured film lies flush on top. The hollow cube corner is cut out on all levels at `HOLE0`, so it
-  is a clean inverted cube. The three middle rings stay free.
+- **Corners** (all eight identical): a base up to `CORNER_FLOOR` (0.76), and on each face a black
+  prism that follows the star outline, with the coloured film inset by `RIM3D` so a thin black rim
+  remains – as on the real puzzle. The hollow cube corner is lined with three flat walls up to the
+  surface (`HOLE_WALL`), so it is a clean inverted cube. The three middle rings stay free.
 - **Edges and centers** are rigid pieces inside the middle ring: a center is a column, an edge is
   a small head at the cube edge and a diagonal stem of the same width, extruded as one piece
   (pentagon cross-section). Each one is built in its solved pose and transformed by its rotation
@@ -164,7 +165,8 @@ after is known, and every piece gets a motion function of t ∈ [0, 1]:
 The scene is built only once per step: each quarter turn sets the group matrix to
 *motion(t) · pose before the quarter turn*, so even `R100` runs smoothly. Only the first and last
 quarter turn of a step accelerate and decelerate; in between the speed is constant. The speed
-slider sets the duration per quarter turn (900 … 150 ms). "◀ Back" plays the inverse of the step backwards. `Cube3D.stop()` ends an animation
+slider sets the duration per quarter turn (900 … 150 ms). "◀ Back" plays the inverse of the step backwards. An error during an animation does not freeze it: the final position is shown and the message
+appears in the input section. The version is shown next to the language selector. `Cube3D.stop()` ends an animation
 immediately at the quarter turn that is running and reports how many are done – used by "Pause" and by any navigation.
 Rendering is on demand (only while animating or when the view changes); the camera is a small
 orbit control written for pointer events, so it works with mouse and touch.

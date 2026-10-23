@@ -11,7 +11,7 @@ const Cube3D=(()=>{
   const EDGE_HEAD=0.84,EDGE_HW=0.095,STEM_IN=0.45; // Kantenkopf ab 0.84, halbe Breite längs der Kante, Stielbeginn
   const GEAR_TILT=25; // Neigung der Zahnradachse in Grad (180° gedreht → doppelt so schief)
   const CORNER_FLOOR=0.76; // Sockel der Ecken: so tief, dass gekippte Zahnräder nie verdeckt werden
-  const GEAR_POCKET=0.32; // Radius der Mulden im Eckkörper rund um die Zahnräder
+  const HOLE_WALL=0.03,RIM3D=0.014; // Wandstärke der hohlen Ecke, schwarzer Rand um die Farbflächen
 
   // ---------- Materialien ----------
   const mats={};
@@ -46,38 +46,26 @@ const Cube3D=(()=>{
     const g=new THREE.BoxGeometry(x1-x0,y1-y0,z1-z0);g.translate((x0+x1)/2,(y0+y1)/2,(z0+z1)/2);
     return new THREE.Mesh(g,material);
   }
-  let STAR_P,GEAR_P,CORNER_TL;
+  let STAR_P,STAR_IN,GEAR_P,GEAR_IN;
 
   // ---------- Teile aufbauen ----------
-  // Umriss des Eckkörpers im Viertel oben links (u,v < 0): Viertelquadrat ohne Mittelringe,
-  // ohne die hohle Würfelecke und ohne zwei runde Mulden um die benachbarten Zahnräder.
-  function cornerOutlineTL(){
-    const W=RING_W,N=HOLE0,g=GEAR_DRAW,R=GEAR_POCKET,s=Math.sqrt(R*R-W*W),pts=[];
-    const arc=(cu,cv,a0,a1)=>{const n=14;for(let k=0;k<=n;k++){const a=a0+(a1-a0)*k/n;pts.push([cu+R*Math.cos(a),cv+R*Math.sin(a)]);}};
-    pts.push([-N,-1],[-W,-1],[-W,-g-s]);
-    arc(0,-g,Math.atan2(-s,-W),Math.atan2(s,-W)-2*Math.PI); // Mulde am Zahnrad oben (Bogen über die Seite u<0)
-    pts.push([-W,-W],[-g+s,-W]);
-    arc(-g,0,Math.atan2(-W,s),Math.atan2(-W,-s)); // Mulde am Zahnrad links
-    pts.push([-1,-W],[-1,-N],[-N,-N]);
-    return pts;
-  }
   function cornerGroup(c){
     const g=new THREE.Group(),[sx,sy,sz]=c.pos,N=HOLE0,F=CORNER_FLOOR;
     const B=(a0,a1,b0,b1,c0,c1)=>{const iv=(s,p,q)=>s>0?[p,q]:[-q,-p];
       const[X0,X1]=iv(sx,a0,a1),[Y0,Y1]=iv(sy,b0,b1),[Z0,Z1]=iv(sz,c0,c1);g.add(box(X0,X1,Y0,Y1,Z0,Z1,BODY));};
-    // Sockel bis CORNER_FLOOR; die hohle Würfelecke ist ausgespart (drei Quader)
+    // Sockel bis CORNER_FLOOR, die hohle Würfelecke ausgespart (drei Quader)
     B(RING_W,N,RING_W,F,RING_W,F);B(N,F,RING_W,N,RING_W,F);B(N,F,N,F,RING_W,N);
-    // Auf jeder Seite: bündiger Körper bis zur Oberfläche (mit Mulden für die Zahnräder),
-    // darauf der Stern als Prisma (seine Zacken greifen in die Mulden) und die dünne Farbschicht.
-    // Die Wände der hohlen Ecke liegen dadurch alle in den Ebenen x/y/z = HOLE0: ein umgedrehter Würfel.
+    // Wände der hohlen Ecke bis zur Oberfläche: ein sauberer, umgedrehter Würfel mit schmalem Rand
+    const T=HOLE_WALL;
+    B(N-T,N,N-T,1,N-T,1);B(N-T,1,N-T,N,N-T,1);B(N-T,1,N-T,1,N-T,N);
+    // Pro Seite: schwarzer Körper in Sternform (folgt der Kontur) und darauf die etwas
+    // kleinere Farbfläche, sodass ringsum ein schwarzer Rand bleibt – wie beim Original
     for(const face of ORDER){const n=FACES[face];if(dot(n,c.pos)<=0.5)continue;
       const[r,d]=FRAME[face],su=Math.sign(dot(c.pos,r)),sv=Math.sign(dot(c.pos,d));
       const col=homeFace(c.R,P3(face,su*0.5,sv*0.5));
       const deg={"-1,-1":0,"1,-1":90,"1,1":180,"-1,1":270}[su+","+sv];
-      g.add(plate(face,rotUV(CORNER_TL,deg),BODY,false,F,SURF-F));
-      const pts=rotUV(STAR_P,deg);
-      g.add(plate(face,pts,BODY,true,F,SURF-F));
-      g.add(plate(face,pts,faceMat(col),true));
+      g.add(plate(face,rotUV(STAR_P,deg),BODY,true,F,SURF-F));
+      g.add(plate(face,rotUV(STAR_IN,deg),faceMat(col),true));
     }
     return g;
   }
@@ -112,7 +100,7 @@ const Cube3D=(()=>{
       let region;
       if(home.length===1)region=rect(-CEN,-CEN,CEN,CEN);
       else{const nb=home.find(k=>k!==face),[du,dv]=localDir(face,FACES[nb]).map(Math.round);region=stubRect(du,dv);}
-      g.add(plate(face,region,faceMat(face),false));
+      g.add(plate(face,insetPts(region,RIM3D*0.7),faceMat(face),false)); // mit schmalem schwarzem Rand
     }
     const R=e.R,m=new THREE.Matrix4().set(R[0][0],R[0][1],R[0][2],0,R[1][0],R[1][1],R[1][2],0,R[2][0],R[2][1],R[2][2],0,0,0,0,1);
     g.children.forEach(c=>c.geometry.applyMatrix4(m));
@@ -133,8 +121,8 @@ const Cube3D=(()=>{
     const g=new THREE.Group(),face=letter(gp.f),[du,dv]=localDir(face,gp.d).map(Math.round);
     // flach mit Ausrichtung zur Kante bauen, dann um die geneigte Achse drehen
     // schwarzer Zahnradkörper (Oberseite bündig mit der Fläche) plus dünne Farbschicht
-    const pts=rotUV(GEAR_P,Math.atan2(dv,du)*180/Math.PI,du*GEAR_DRAW,dv*GEAR_DRAW);
-    const parts=[plate(face,pts,BODY,true,SURF-GEAR_DEPTH,GEAR_DEPTH),plate(face,pts,faceMat(gp.id[0]),true)];
+    const ang=Math.atan2(dv,du)*180/Math.PI,pts=rotUV(GEAR_P,ang,du*GEAR_DRAW,dv*GEAR_DRAW);
+    const parts=[plate(face,pts,BODY,true,SURF-GEAR_DEPTH,GEAR_DEPTH),plate(face,rotUV(GEAR_IN,ang,du*GEAR_DRAW,dv*GEAR_DRAW),faceMat(gp.id[0]),true)];
     const{c,spin}=gearFrame(gp),M=new THREE.Matrix4().makeTranslation(c.x,c.y,c.z).multiply(new THREE.Matrix4().makeRotationFromQuaternion(spin)).multiply(new THREE.Matrix4().makeTranslation(-c.x,-c.y,-c.z));
     for(const m of parts){m.geometry.applyMatrix4(M);g.add(m);}
     return g;
@@ -222,7 +210,10 @@ const Cube3D=(()=>{
   function loop(){if(looping)return;looping=true;requestAnimationFrame(tick);}
   function tick(now){
     looping=false;
-    if(anim)anim.frame(now);
+    // Fehler während der Animation dürfen sie nicht einfrieren: Endstellung zeigen und melden
+    if(anim){try{anim.frame(now);}catch(e){const a=anim;anim=null;console.error(e);
+      try{build(finalState||shown);}catch(_){}finalState=null;a.resolve();
+      window.dispatchEvent(new CustomEvent("cube3d-error",{detail:String(e&&e.message||e)}));}}
     if(renderer&&(needRender||anim)){renderer.render(scene,camera);needRender=false;}
     if(anim)loop();
   }
@@ -236,7 +227,7 @@ const Cube3D=(()=>{
     if(renderer){el.appendChild(renderer.domElement);resize();return true;}
     if(typeof THREE==="undefined")return false;
     BODY=new THREE.MeshStandardMaterial({color:0x141416,roughness:0.35,metalness:0.15});
-    STAR_P=smoothPts(STAR_TL);GEAR_P=smoothPts(GEAR_PATH);CORNER_TL=cornerOutlineTL();
+    STAR_P=smoothPts(STAR_SYM);GEAR_P=smoothPts(GEAR_PATH);STAR_IN=insetPts(STAR_P,RIM3D);GEAR_IN=insetPts(GEAR_P,RIM3D);
     renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});
     renderer.setPixelRatio(Math.min(2,window.devicePixelRatio||1));
     scene=new THREE.Scene();world=new THREE.Group();scene.add(world);
