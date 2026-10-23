@@ -66,6 +66,23 @@ details summary{cursor:pointer;color:var(--muted);font-size:14px}
 .seg button{border:0;border-radius:0;padding:4px 12px;font-size:13px}
 .seg button.on{background:var(--accent);color:#fff}
 #view3d canvas{display:block;border-radius:8px}
+.fold>summary{cursor:pointer;font-weight:600;font-size:15px;color:var(--ink)}
+.fold[open]>summary{margin-bottom:10px}
+.transport{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-top:8px}
+.transport button{min-width:44px}
+.nettabs{display:none}
+@media (max-width:760px){
+  /* Handy: zuerst die Ansicht (Reiter + Würfel), danach Eingabe und Rest */
+  main{padding:12px 10px 40px;display:flex;flex-direction:column}
+  .top{order:0;margin-bottom:8px}.nettabs{order:1}.nets{order:2}.fold[data-fold="input"]{order:3}.two{order:4}.help{order:5}
+  h1{font-size:18px}
+  .sub{display:none}
+  .nettabs{display:flex;position:sticky;top:0;z-index:5;margin:0 0 8px;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--panel)}
+  .nettabs button{flex:1;border:0;border-radius:0;padding:9px 6px}
+  .nettabs button.on{background:var(--accent);color:#fff}
+  .transport{flex-wrap:nowrap;gap:4px}.transport button{flex:1 1 auto;padding:7px 4px;font-size:13px;min-width:0;white-space:nowrap}
+  .nets[data-tab="step"] .net:not(.t-step),.nets[data-tab="before"] .net:not(.t-before),.nets[data-tab="after"] .net:not(.t-after){display:none}
+}
 </style>
 </head>
 <body>
@@ -80,7 +97,8 @@ details summary{cursor:pointer;color:var(--muted);font-size:14px}
   </div>
   <p class="sub" data-i18n-html="intro"></p>
 
-  <section class="panel">
+  <details class="panel fold" data-fold="input" open>
+    <summary data-i18n="secInput"></summary>
     <div class="inputs">
       <div>
         <label for="setup" data-i18n="setupLabel"></label>
@@ -94,39 +112,49 @@ details summary{cursor:pointer;color:var(--muted);font-size:14px}
     <div class="err" id="err"></div>
     <div class="row">
       <button class="primary" id="apply" data-i18n="apply"></button>
-      <button id="first" data-i18n-title="first">⏮</button>
-      <button id="prev" data-i18n="prev"></button>
-      <button id="next" data-i18n="next"></button>
-      <button id="last" data-i18n-title="last">⏭</button>
-      <button id="play"></button>
       <button id="invert" data-i18n="invert" data-i18n-title="invertTitle"></button>
       <label class="chk"><input type="checkbox" id="expand"> <span data-i18n="expand"></span></label>
       <label class="chk"><input type="checkbox" id="markers"> <span data-i18n="markers"></span></label>
       <button id="theme" data-i18n-title="theme">◐</button>
     </div>
-    <div class="chips" id="chips"></div>
-  </section>
+  </details>
 
-  <section class="nets">
-    <div class="panel net"><h2><span class="h" data-i18n="before"></span> <span id="lblBefore"></span></h2><div id="netBefore"></div></div>
-    <div class="panel net"><h2><span class="h" data-i18n="step"></span> <span id="lblStep"></span></h2>
+  <!-- Auf schmalen Bildschirmen: Reiter statt drei Spalten -->
+  <div class="nettabs" role="tablist">
+    <button data-tab="step" data-i18n="step"></button>
+    <button data-tab="before" data-i18n="before"></button>
+    <button data-tab="after" data-i18n="after"></button>
+  </div>
+  <section class="nets" id="nets" data-tab="step">
+    <div class="panel net t-before"><h2><span class="h" data-i18n="before"></span> <span id="lblBefore"></span></h2><div id="netBefore"></div></div>
+    <div class="panel net t-step"><h2><span class="h" data-i18n="step"></span> <span id="lblStep"></span></h2>
       <div class="seg"><button id="vNet" data-i18n="viewNet"></button><button id="v3d">3D</button></div>
       <div id="netStep"></div><div id="view3d" hidden></div>
+      <div class="transport">
+        <button id="first" data-i18n-title="first">⏮</button>
+        <button id="prev" data-i18n="prev"></button>
+        <button id="play" class="primary"></button>
+        <button id="next" data-i18n="next"></button>
+        <button id="last" data-i18n-title="last">⏭</button>
+      </div>
+      <div class="chips" id="chips"></div>
       <div class="legend" id="legendStep" data-i18n="legendStep"></div><div class="legend" id="legend3d" data-i18n="hint3d" hidden></div></div>
-    <div class="panel net"><h2><span class="h" data-i18n="after"></span> <span id="lblAfter"></span></h2><div id="netAfter"></div>
+    <div class="panel net t-after"><h2><span class="h" data-i18n="after"></span> <span id="lblAfter"></span></h2><div id="netAfter"></div>
       <div class="legend" data-i18n="legendAfter"></div></div>
   </section>
 
   <div class="two">
-    <section class="panel">
+    <details class="panel fold" data-fold="moves" open>
+      <summary data-i18n="secMoves"></summary>
       <span class="lbl" data-i18n="addMove"></span>
       <div class="movepad" id="pad"></div>
       <span class="lbl" data-i18n="addMacro"></span>
       <div class="movepad" id="macroPad"></div>
       <span class="lbl" style="margin-top:16px" data-i18n="changes"></span>
       <pre class="diff" id="diff"></pre>
-    </section>
-    <section class="panel">
+    </details>
+    <details class="panel fold" data-fold="macros" open>
+      <summary data-i18n="secMacros"></summary>
       <label for="macros" data-i18n-html="macrosLabel"></label>
       <textarea id="macros" spellcheck="false"></textarea>
       <div class="err" id="macroErr"></div>
@@ -135,7 +163,7 @@ details summary{cursor:pointer;color:var(--muted);font-size:14px}
         <button id="macroReset" data-i18n="macroReset"></button>
       </div>
       <p class="legend" data-i18n-html="macroHelp"></p>
-    </section>
+    </details>
   </div>
 
   <section class="panel help">
@@ -181,6 +209,7 @@ de:{
   dGears:"Zahnräder (Winkel = Eigendrehung gegen den Uhrzeigersinn)", dGearSpin:"{s} dreht sich auf der Stelle",
   dCorners:"Ecken", dCornerTwist:"{s} verdreht", dEC:"Kanten & Mitten", dCenterRot:"{s} auf der Stelle gedreht ({a}°)", dECRot:"{s} auf der Stelle gedreht/gekippt",
   dNone:"Keine Veränderung – die Zugfolge ist (für diese Stellung) die Identität.",
+  secInput:"Eingabe", secMoves:"Züge & Veränderungen", secMacros:"Makros",
   viewNet:"Netz", hint3d:"Ziehen dreht den Würfel, Mausrad zoomt, Doppelklick setzt die Ansicht zurück. Mit „Vor ▶“ und „Abspielen“ werden die Züge animiert.", no3d:"3D nicht verfügbar: lib/three.min.js fehlt oder WebGL ist deaktiviert."
 },
 en:{
@@ -209,6 +238,7 @@ en:{
   dGears:"Gears (angle = own rotation counterclockwise)", dGearSpin:"{s} spins in place",
   dCorners:"Corners", dCornerTwist:"{s} twisted", dEC:"Edges & centers", dCenterRot:"{s} rotated in place ({a}°)", dECRot:"{s} rotated/flipped in place",
   dNone:"No change – the sequence is the identity (for this position).",
+  secInput:"Input", secMoves:"Moves & changes", secMacros:"Macros",
   viewNet:"Net", hint3d:"Drag to rotate the cube, scroll to zoom, double-click resets the view. “Next ▶” and “Play” animate the moves.", no3d:"3D unavailable: lib/three.min.js is missing or WebGL is disabled."
 },
 es:{
@@ -237,6 +267,7 @@ es:{
   dGears:"Engranajes (ángulo = giro propio antihorario)", dGearSpin:"{s} gira en su sitio",
   dCorners:"Esquinas", dCornerTwist:"{s} orientada", dEC:"Aristas y centros", dCenterRot:"{s} girado en su sitio ({a}°)", dECRot:"{s} girado/volteado en su sitio",
   dNone:"Sin cambios: la secuencia es la identidad (para esta posición).",
+  secInput:"Entrada", secMoves:"Movimientos y cambios", secMacros:"Macros",
   viewNet:"Desarrollo", hint3d:"Arrastra para girar el cubo, la rueda del ratón hace zoom, doble clic restablece la vista. «Adelante ▶» y «Reproducir» animan los movimientos.", no3d:"3D no disponible: falta lib/three.min.js o WebGL está desactivado."
 }};
 let LANG="de";
@@ -658,6 +689,25 @@ function setView(v){
   $("netStep").hidden=v==="3d";$("view3d").hidden=v!=="3d";
   $("legendStep").hidden=v==="3d";$("legend3d").hidden=v!=="3d";
   if(states.length)draw();
+}
+// Reiter (nur auf schmalen Bildschirmen sichtbar): Schritt / Vorher / Nachher
+function setTab(tab){
+  $("nets").dataset.tab=tab;store.set("mgcTab",tab);
+  document.querySelectorAll(".nettabs button").forEach(b=>b.classList.toggle("on",b.dataset.tab===tab));
+}
+document.querySelectorAll(".nettabs button").forEach(b=>b.onclick=()=>setTab(b.dataset.tab));
+setTab(["step","before","after"].includes(store.get("mgcTab"))?store.get("mgcTab"):"step");
+// Einklappbare Bereiche; Zustand wird gemerkt. Auf dem Handy sind beim ersten Besuch
+// nur Eingabe und Schritt-Ansicht offen.
+{
+  let folds={};try{folds=JSON.parse(store.get("mgcFold")||"{}");}catch(e){}
+  const narrow=matchMedia("(max-width:760px)").matches;
+  document.querySelectorAll("details.fold").forEach(d=>{
+    const k=d.dataset.fold;
+    d.open=k in folds?folds[k]:!(narrow&&k!=="input");
+    // nur echte Klicks merken (das programmatische Öffnen/Schließen oben löst ebenfalls "toggle" aus)
+    d.querySelector("summary").addEventListener("click",()=>setTimeout(()=>{folds[k]=d.open;store.set("mgcFold",JSON.stringify(folds));}));
+  });
 }
 $("vNet").onclick=()=>setView("net");
 $("v3d").onclick=()=>setView("3d");

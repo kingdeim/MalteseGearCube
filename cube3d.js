@@ -10,6 +10,7 @@ const Cube3D=(()=>{
   const RING_W=0.12,RING_IN=0.6,CORE_R=0.62; // halbe Breite des Mittelrings, Innenkante der Mitten, Kern
   const EDGE_HEAD=0.84,EDGE_HW=0.095,STEM_IN=0.45; // Kantenkopf ab 0.84, halbe Breite längs der Kante, Stielbeginn
   const NOTCH_L=0.3,NOTCH_D=0.8; // Aussparung der Ecken neben den Kantensteinen
+  const GEAR_TILT=10; // Neigung der Zahnradachse in Grad (180° gedreht → doppelt so schief)
 
   // ---------- Materialien ----------
   const mats={};
@@ -91,7 +92,7 @@ const Cube3D=(()=>{
       // Stiel diagonal zum Kern, im Querschnitt so groß wie der Kopf
       const A=V(FACES[home[0]]),Bv=V(FACES[home[1]]),dir=A.clone().add(Bv).normalize();
       const across=A.clone().sub(Bv).normalize(),axis=new THREE.Vector3().crossVectors(across,dir);
-      const r0=STEM_IN,r1=EDGE_HEAD*Math.SQRT2+0.02,w=(1-EDGE_HEAD)*Math.SQRT2;
+      const r0=STEM_IN,r1=(1+EDGE_HEAD)/Math.SQRT2,w=(1-EDGE_HEAD)*Math.SQRT2;
       const s=new THREE.BoxGeometry(2*EDGE_HW,w,r1-r0);
       s.applyMatrix4(new THREE.Matrix4().makeBasis(axis,across,dir).setPosition(dir.clone().multiplyScalar((r0+r1)/2)));
       g.add(new THREE.Mesh(s,BODY));
@@ -106,10 +107,24 @@ const Cube3D=(()=>{
     g.children.forEach(c=>c.geometry.applyMatrix4(m));
     return g;
   }
+  // Zahnräder drehen sich um eine leicht geneigte Achse (GEAR_TILT, zur Würfelkante hin geneigt).
+  // In gelöster Lage liegen sie flach; bei 90° stehen sie über eine Diagonale schief,
+  // bei 180° am stärksten (doppelter Neigungswinkel).
+  function gearFrame(g){
+    const f=V(g.f),d=V(g.d),P=V(g.P),b=GEAR_TILT*Math.PI/180;
+    const axle=f.clone().multiplyScalar(Math.cos(b)).addScaledVector(d,Math.sin(b)).normalize();
+    const theta=Math.atan2(new THREE.Vector3().crossVectors(d,P).dot(f),d.dot(P));
+    const spin=new THREE.Quaternion().setFromAxisAngle(axle,theta);
+    const base=new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(d,new THREE.Vector3().crossVectors(f,d),f));
+    return {c:V(add(g.f,scl(g.d,GEAR_DRAW))),spin,q:spin.clone().multiply(base)};
+  }
   function gearGroup(gp){
-    const g=new THREE.Group(),face=letter(gp.f),[du,dv]=localDir(face,gp.d).map(Math.round),[pu,pv]=localDir(face,gp.P);
-    const ang=Math.atan2(pv,pu)*180/Math.PI;
-    g.add(plate(face,rotUV(GEAR_P,ang,du*GEAR_DRAW,dv*GEAR_DRAW),faceMat(gp.id[0]),true));
+    const g=new THREE.Group(),face=letter(gp.f),[du,dv]=localDir(face,gp.d).map(Math.round);
+    // flach mit Ausrichtung zur Kante bauen, dann um die geneigte Achse drehen
+    const m=plate(face,rotUV(GEAR_P,Math.atan2(dv,du)*180/Math.PI,du*GEAR_DRAW,dv*GEAR_DRAW),faceMat(gp.id[0]),true);
+    const{c,spin}=gearFrame(gp);
+    m.geometry.applyMatrix4(new THREE.Matrix4().makeTranslation(c.x,c.y,c.z).multiply(new THREE.Matrix4().makeRotationFromQuaternion(spin)).multiply(new THREE.Matrix4().makeTranslation(-c.x,-c.y,-c.z)));
+    g.add(m);
     return g;
   }
   function build(st){
@@ -123,8 +138,7 @@ const Cube3D=(()=>{
 
   // ---------- Animation eines Viertelzugs ----------
   const V=a=>new THREE.Vector3(...a);
-  function gearPose(g){const X=V(g.P).normalize(),Z=V(g.f),Y=new THREE.Vector3().crossVectors(Z,X);
-    return {c:V(add(g.f,scl(g.d,GEAR_DRAW))),q:new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(X,Y,Z))};}
+  const gearPose=g=>gearFrame(g);
   // Liefert pro Teil eine Funktion t∈[0,1] → (Quaternion, Position) der Gruppe
   function motions(st0,st1,q){
     const out=new Map(),whole="xyz".includes(q.face),sense=q.prime?-1:1;

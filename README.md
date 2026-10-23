@@ -22,6 +22,9 @@ switchable in the top-right corner.
 - **3D view** with animated moves: switch the Step panel between "Net" and "3D";
   "Next ▶" and "Play" animate every quarter turn (half 90°, middle ring 45°, gears spinning).
   Drag to rotate, scroll to zoom, double-click to reset the view.
+- Mobile layout: the cube view comes first; on small screens "Step", "Before" and "After" are
+  tabs, and the input, moves/changes and macro sections can be collapsed (state is remembered).
+  The playback controls sit directly below the view.
 
 ## Notation
 
@@ -150,13 +153,18 @@ after is known, and every piece gets a motion function of t ∈ [0, 1]:
 - ring gears travel around the axis from their start to their end position while their
   orientation is interpolated (quaternion slerp) – this shows the 90° spin.
 
+Gears spin about an axle that is tilted by `GEAR_TILT` (10°) towards the cube edge. In the solved
+orientation a gear lies flat; turned by 90° it stands tilted across a diagonal, and turned by 180°
+it is tilted the most (twice the axle angle) – as on the real puzzle.
+
 After the last quarter turn the scene is rebuilt from the final state. Rendering is on demand
 (only while animating or when the view changes); the camera is a small orbit control written
 for pointer events, so it works with mouse and touch.
 
 ### Persistence and debugging
 
-`localStorage` keys: `mgc` (setup and sequence), `mgcMacros` (edited macros), `mgcView` (net or 3D) and
+`localStorage` keys: `mgc` (setup and sequence), `mgcMacros` (edited macros), `mgcView` (net or 3D),
+`mgcTab` (mobile tab), `mgcFold` (collapsed sections) and
 `mgcLang` (language). All access is wrapped in `try/catch`, so the app also runs where
 storage is blocked. For experiments in the browser console, `window.MGC` exposes
 `solved`, `parse`, `applySteps`, `index` and `describeDiff`, e.g.:

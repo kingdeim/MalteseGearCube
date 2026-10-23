@@ -3,6 +3,21 @@
 All notable changes to this project are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.3.0] – 2026-10-23
+
+### Added
+- Mobile layout: the cube view is shown first, "Step / Before / After" become tabs on small
+  screens, and the input, moves/changes and macro sections are collapsible (remembered;
+  on phones only the input is open on the first visit).
+- 3D: gears spin about a slightly tilted axle, so they stand tilted when turned by 90° or 180°.
+
+### Changed
+- Playback controls and the step list moved directly below the Step view.
+
+### Fixed
+- 3D: the stem of an edge stone now reaches the widest part of its head instead of touching it
+  only at a thin point.
+
 ## [1.2.2] – 2026-10-09
 
 ### Changed
