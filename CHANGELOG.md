@@ -3,6 +3,15 @@
 All notable changes to this project are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.5.2] – 2026-10-23
+
+### Changed
+- 3D: the black bodies of corners and gears are about 2 mm larger than their coloured areas
+  (outline grown via a raster to stay clean); edge heads are wider accordingly.
+
+### Fixed
+- 3D: gap between the star arms and the walls of the hollow corner.
+
 ## [1.5.1] – 2026-10-23
 
 ### Changed

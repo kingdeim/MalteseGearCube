@@ -8,10 +8,10 @@ const Cube3D=(()=>{
   const DEF={yaw:0.62,pitch:0.52,dist:6.4};
   const SURF=1.0,LIFT=0.001,THICK=0.004,GEAR_DEPTH=0.06; // Farbflächen hauchdünn, Zahnradkörper
   const RING_W=0.12,RING_IN=0.6,CORE_R=0.62; // halbe Breite des Mittelrings, Innenkante der Mitten, Kern
-  const EDGE_HEAD=0.84,EDGE_HW=0.095,STEM_IN=0.45; // Kantenkopf ab 0.84, halbe Breite längs der Kante, Stielbeginn
+  const EDGE_HEAD=0.84,EDGE_HW=0.12,STEM_IN=0.45; // Kantenkopf ab 0.84, halbe Breite längs der Kante, Stielbeginn
   const GEAR_TILT=25; // Neigung der Zahnradachse in Grad (180° gedreht → doppelt so schief)
   const CORNER_FLOOR=0.76; // Sockel der Ecken: so tief, dass gekippte Zahnräder nie verdeckt werden
-  const HOLE_WALL=0.03,RIM3D=0.014; // Wandstärke der hohlen Ecke, schwarzer Rand um die Farbflächen
+  const HOLE_WALL=0.03,BODY_GROW=0.065; // Wandstärke der hohlen Ecke; schwarze Körper ca. 2 mm größer als die Farbflächen
 
   // ---------- Materialien ----------
   const mats={};
@@ -46,7 +46,35 @@ const Cube3D=(()=>{
     const g=new THREE.BoxGeometry(x1-x0,y1-y0,z1-z0);g.translate((x0+x1)/2,(y0+y1)/2,(z0+z1)/2);
     return new THREE.Mesh(g,material);
   }
-  let STAR_P,STAR_IN,GEAR_P,GEAR_IN;
+  // Umriss um d nach außen vergrößern (für die schwarzen Körper unter den Farbflächen).
+  // Robust über ein Raster: Polygon füllen, alles im Abstand ≤ d dazunehmen, Kontur mit
+  // Marching Squares nachzeichnen, vereinfachen. So entstehen in engen Kehlen keine Schleifen.
+  function growOutline(pts,d,cell=0.004){
+    const xs=pts.map(p=>p[0]),ys=pts.map(p=>p[1]),m=d+3*cell;
+    const x0=Math.min(...xs)-m,y0=Math.min(...ys)-m,W=Math.ceil((Math.max(...xs)+m-x0)/cell)+1,H=Math.ceil((Math.max(...ys)+m-y0)/cell)+1;
+    const n=pts.length,G=new Uint8Array(W*H);
+    const inside=(x,y)=>{let c=false;for(let i=0,j=n-1;i<n;j=i++){const[a,b]=pts[i],[e,f]=pts[j];if((b>y)!==(f>y)&&x<(e-a)*(y-b)/(f-b)+a)c=!c;}return c;};
+    const near=(x,y)=>{for(let i=0,j=n-1;i<n;j=i++){const[a,b]=pts[j],[e,f]=pts[i],dx=e-a,dy=f-b,L=dx*dx+dy*dy||1;
+      const t=Math.max(0,Math.min(1,((x-a)*dx+(y-b)*dy)/L)),qx=a+t*dx-x,qy=b+t*dy-y;if(qx*qx+qy*qy<=d*d)return true;}return false;};
+    for(let j=1;j<H-1;j++)for(let i=1;i<W-1;i++){const x=x0+i*cell,y=y0+j*cell;if(inside(x,y)||near(x,y))G[j*W+i]=1;}
+    // Marching Squares: Kantenstücke sammeln und zur längsten geschlossenen Kontur verketten
+    const seg=new Map(),g=(i,j)=>G[j*W+i];
+    for(let j=0;j<H-1;j++)for(let i=0;i<W-1;i++){
+      const k=g(i,j)*8+g(i+1,j)*4+g(i+1,j+1)*2+g(i,j+1);if(k===0||k===15)continue;
+      const T=`${2*i+1},${2*j}`,R=`${2*i+2},${2*j+1}`,B=`${2*i+1},${2*j+2}`,L=`${2*i},${2*j+1}`;
+      const add=(a,b)=>seg.set(a,b);
+      switch(k){case 1:add(B,L);break;case 2:add(R,B);break;case 3:add(R,L);break;case 4:add(T,R);break;case 5:add(T,L);add(B,R);break;
+        case 6:add(T,B);break;case 7:add(T,L);break;case 8:add(L,T);break;case 9:add(B,T);break;case 10:add(L,B);add(R,T);break;
+        case 11:add(R,T);break;case 12:add(L,R);break;case 13:add(B,R);break;case 14:add(L,B);break;}
+    }
+    const used=new Set();let best=[];
+    for(const s of seg.keys()){if(used.has(s))continue;const loop=[];let c=s;
+      while(c&&!used.has(c)){used.add(c);const[a,b]=c.split(",").map(Number);loop.push([x0+a/2*cell,y0+b/2*cell]);c=seg.get(c);}
+      if(loop.length>best.length)best=loop;}
+    // Treppenstufen entfernen: ausdünnen und glätten
+    return smoothPts(best.filter((_,i)=>i%2===0),3);
+  }
+  let STAR_P,STAR_BODY,GEAR_P,GEAR_BODY;
 
   // ---------- Teile aufbauen ----------
   function cornerGroup(c){
@@ -64,8 +92,8 @@ const Cube3D=(()=>{
       const[r,d]=FRAME[face],su=Math.sign(dot(c.pos,r)),sv=Math.sign(dot(c.pos,d));
       const col=homeFace(c.R,P3(face,su*0.5,sv*0.5));
       const deg={"-1,-1":0,"1,-1":90,"1,1":180,"-1,1":270}[su+","+sv];
-      g.add(plate(face,rotUV(STAR_P,deg),BODY,true,F,SURF-F));
-      g.add(plate(face,rotUV(STAR_IN,deg),faceMat(col),true));
+      g.add(plate(face,rotUV(STAR_BODY,deg),BODY,true,F,SURF-F));
+      g.add(plate(face,rotUV(STAR_P,deg),faceMat(col),true));
     }
     return g;
   }
@@ -100,7 +128,7 @@ const Cube3D=(()=>{
       let region;
       if(home.length===1)region=rect(-CEN,-CEN,CEN,CEN);
       else{const nb=home.find(k=>k!==face),[du,dv]=localDir(face,FACES[nb]).map(Math.round);region=stubRect(du,dv);}
-      g.add(plate(face,insetPts(region,RIM3D*0.7),faceMat(face),false)); // mit schmalem schwarzem Rand
+      g.add(plate(face,region,faceMat(face),false));
     }
     const R=e.R,m=new THREE.Matrix4().set(R[0][0],R[0][1],R[0][2],0,R[1][0],R[1][1],R[1][2],0,R[2][0],R[2][1],R[2][2],0,0,0,0,1);
     g.children.forEach(c=>c.geometry.applyMatrix4(m));
@@ -121,8 +149,8 @@ const Cube3D=(()=>{
     const g=new THREE.Group(),face=letter(gp.f),[du,dv]=localDir(face,gp.d).map(Math.round);
     // flach mit Ausrichtung zur Kante bauen, dann um die geneigte Achse drehen
     // schwarzer Zahnradkörper (Oberseite bündig mit der Fläche) plus dünne Farbschicht
-    const ang=Math.atan2(dv,du)*180/Math.PI,pts=rotUV(GEAR_P,ang,du*GEAR_DRAW,dv*GEAR_DRAW);
-    const parts=[plate(face,pts,BODY,true,SURF-GEAR_DEPTH,GEAR_DEPTH),plate(face,rotUV(GEAR_IN,ang,du*GEAR_DRAW,dv*GEAR_DRAW),faceMat(gp.id[0]),true)];
+    const ang=Math.atan2(dv,du)*180/Math.PI,pts=rotUV(GEAR_BODY,ang,du*GEAR_DRAW,dv*GEAR_DRAW);
+    const parts=[plate(face,pts,BODY,true,SURF-GEAR_DEPTH,GEAR_DEPTH),plate(face,rotUV(GEAR_P,ang,du*GEAR_DRAW,dv*GEAR_DRAW),faceMat(gp.id[0]),true)];
     const{c,spin}=gearFrame(gp),M=new THREE.Matrix4().makeTranslation(c.x,c.y,c.z).multiply(new THREE.Matrix4().makeRotationFromQuaternion(spin)).multiply(new THREE.Matrix4().makeTranslation(-c.x,-c.y,-c.z));
     for(const m of parts){m.geometry.applyMatrix4(M);g.add(m);}
     return g;
@@ -227,7 +255,7 @@ const Cube3D=(()=>{
     if(renderer){el.appendChild(renderer.domElement);resize();return true;}
     if(typeof THREE==="undefined")return false;
     BODY=new THREE.MeshStandardMaterial({color:0x141416,roughness:0.35,metalness:0.15});
-    STAR_P=smoothPts(STAR_SYM);GEAR_P=smoothPts(GEAR_PATH);STAR_IN=insetPts(STAR_P,RIM3D);GEAR_IN=insetPts(GEAR_P,RIM3D);
+    STAR_P=smoothPts(STAR_SYM);GEAR_P=smoothPts(GEAR_PATH);STAR_BODY=growOutline(STAR_P,BODY_GROW);GEAR_BODY=growOutline(GEAR_P,BODY_GROW);
     renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});
     renderer.setPixelRatio(Math.min(2,window.devicePixelRatio||1));
     scene=new THREE.Scene();world=new THREE.Group();scene.add(world);

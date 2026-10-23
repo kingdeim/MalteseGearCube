@@ -140,8 +140,9 @@ The 3D scene is built from the simulation state, piece by piece. Every piece is 
 stickers are very thin films on black bodies. A fixed black sphere represents the core.
 
 - **Corners** (all eight identical): a base up to `CORNER_FLOOR` (0.76), and on each face a black
-  prism that follows the star outline, with the coloured film inset by `RIM3D` so a thin black rim
-  remains – as on the real puzzle. The hollow cube corner is lined with three flat walls up to the
+  prism that follows the star outline, grown by `BODY_GROW` (≈ 2 mm on a 60 mm cube) so a black
+  rim surrounds the coloured film – as on the real puzzle. The grown outline is computed once with
+  a raster (fill, dilate, marching squares, smoothing) to avoid self-intersections in narrow notches. The hollow cube corner is lined with three flat walls up to the
   surface (`HOLE_WALL`), so it is a clean inverted cube. The three middle rings stay free.
 - **Edges and centers** are rigid pieces inside the middle ring: a center is a column, an edge is
   a small head at the cube edge and a diagonal stem of the same width, extruded as one piece
@@ -149,7 +150,7 @@ stickers are very thin films on black bodies. A fixed black sphere represents th
   matrix `R` from the simulation. So an edge sitting in a center slot sticks out of the face, and
   a center sitting in an edge slot lies recessed – as on the real puzzle. (The 2D net shows the
   same situation as a two-coloured sticker.)
-- **Gears** are black bodies with a coloured top that spin about an axle tilted by `GEAR_TILT`
+- **Gears** are black bodies (grown the same way) with a coloured top that spin about an axle tilted by `GEAR_TILT`
   (25°) towards the cube edge. In the solved orientation a gear lies flat; turned by 90° it stands
   tilted across a diagonal, and turned by 180° it is tilted the most (twice the axle angle).
 

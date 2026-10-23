@@ -92,7 +92,7 @@ details summary{cursor:pointer;color:var(--muted);font-size:14px}
 <main>
   <div class="top">
     <h1 data-i18n="title"></h1>
-    <span class="ver" title="Version">v1.5.1</span>
+    <span class="ver" title="Version">v1.5.2</span>
     <select id="lang" aria-label="Language">
       <option value="de">Deutsch</option>
       <option value="en">English</option>
@@ -183,7 +183,7 @@ details summary{cursor:pointer;color:var(--muted);font-size:14px}
 </main>
 
 <script src="lib/three.min.js"></script>
-<script src="cube3d.js?v=1.5.1"></script>
+<script src="cube3d.js?v=1.5.2"></script>
 <script>
 "use strict";
 // ---------- Sprachen / i18n ----------
@@ -520,13 +520,6 @@ function smoothPts(d,iter=2){
   let p=typeof d==="string"?parsePts(d):d.map(q=>q.slice());
   for(let k=0;k<iter;k++)p=p.map((q,i)=>{const a=p[(i+p.length-1)%p.length],b=p[(i+1)%p.length];return[(a[0]+2*q[0]+b[0])/4,(a[1]+2*q[1]+b[1])/4];});
   return p;
-}
-// Umriss um d nach innen versetzen (für den schwarzen Rand um die Farbflächen)
-function insetPts(p,d){
-  const n=p.length;let area=0;for(let i=0;i<n;i++){const a=p[i],b=p[(i+1)%n];area+=a[0]*b[1]-b[0]*a[1];}
-  const s=area>0?1:-1;
-  return p.map((q,i)=>{const a=p[(i-1+n)%n],b=p[(i+1)%n],tx=b[0]-a[0],ty=b[1]-a[1],L=Math.hypot(tx,ty)||1;
-    return[q[0]-s*ty/L*d,q[1]+s*tx/L*d];});
 }
 function smoothPath(d,iter=2){
   const p=smoothPts(d,iter);
