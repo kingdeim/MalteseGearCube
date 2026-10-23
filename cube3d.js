@@ -10,7 +10,9 @@ const Cube3D=(()=>{
   const RING_W=0.12,RING_IN=0.6,CORE_R=0.62; // halbe Breite des Mittelrings, Innenkante der Mitten, Kern
   const EDGE_HEAD=0.84,EDGE_HW=0.095,STEM_IN=0.45; // Kantenkopf ab 0.84, halbe Breite längs der Kante, Stielbeginn
   const GEAR_TILT=25; // Neigung der Zahnradachse in Grad (180° gedreht → doppelt so schief)
-  const CORNER_FLOOR=0.76; // Sockel der Ecken: so tief, dass gekippte Zahnräder nie verdeckt werden
+  const CORNER_FLOOR=0.88; // Oberkante des Ecksockels; darauf stehen die Sterne als flache Platten
+  const CORNER_IN=0.3;     // Sockel beginnt erst hier: breiter freier Kanal um die Mittelringe für wandernde Zahnräder
+  const GEAR_DIP=0.14;     // so weit taucht ein Zahnrad beim Weg über die Würfelkante nach innen ab
   const BODY_GROW=0.065; // schwarzer Körper der Ecksterne ca. 2 mm größer als die Farbfläche
 
   // ---------- Materialien ----------
@@ -84,7 +86,7 @@ const Cube3D=(()=>{
     const B=(a0,a1,b0,b1,c0,c1)=>{const iv=(s,p,q)=>s>0?[p,q]:[-q,-p];
       const[X0,X1]=iv(sx,a0,a1),[Y0,Y1]=iv(sy,b0,b1),[Z0,Z1]=iv(sz,c0,c1);g.add(box(X0,X1,Y0,Y1,Z0,Z1,BODY));};
     // Sockel bis CORNER_FLOOR, die hohle Würfelecke ausgespart (drei Quader)
-    B(RING_W,N,RING_W,F,RING_W,F);B(N,F,RING_W,N,RING_W,F);B(N,F,N,F,RING_W,N);
+    const I=CORNER_IN;B(I,N,I,F,I,F);B(N,F,I,N,I,F);B(N,F,N,F,I,N);
     // Keine eigenen Wandquader: Die Seitenflächen der (vergrößerten) Sternarme reichen genau bis an
     // die Aussparung und bilden zusammen mit dem Sockel die Wände der hohlen Ecke – rund wie die Sterne.
     // Pro Seite: schwarzer Körper in Sternform (folgt der Kontur) und darauf die etwas
@@ -186,7 +188,7 @@ const Cube3D=(()=>{
       const qInv=a.q.clone().invert();
       out.set("g"+g.id,t=>{
         const qt=a.q.clone().slerp(b.q,t).multiply(qInv);
-        const r=w0.length()+(w1.length()-w0.length())*t;
+        const r=w0.length()+(w1.length()-w0.length())*t-GEAR_DIP*Math.sin(Math.PI*t); // Bogen nach innen
         const ct=w0.clone().normalize().applyAxisAngle(ax,phi*t).multiplyScalar(r).addScaledVector(ax,h);
         return {q:qt,p:ct.sub(a.c.clone().applyQuaternion(qt))};
       });

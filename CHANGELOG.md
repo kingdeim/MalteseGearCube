@@ -3,6 +3,13 @@
 All notable changes to this project are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.5.5] – 2026-10-23
+
+### Fixed
+- 3D: gears were partly hidden inside the cube while moving over an edge. The corner base now
+  leaves a wide channel around the middle rings, the stars are flatter plates, and travelling
+  gears dip slightly inwards on their way over the edge.
+
 ## [1.5.4] – 2026-10-23
 
 ### Fixed

@@ -139,8 +139,9 @@ The 3D scene is built from the simulation state, piece by piece. Every piece is 
 (three.js `ExtrudeGeometry`, quadratic curves through the smoothed points); the coloured
 stickers are very thin films on black bodies. A fixed black sphere represents the core.
 
-- **Corners** (all eight identical): a base up to `CORNER_FLOOR` (0.76), and on each face a black
-  prism that follows the star outline, grown by `BODY_GROW` (≈ 2 mm on a 60 mm cube) so a black
+- **Corners** (all eight identical): a base from `CORNER_IN` (0.3) up to `CORNER_FLOOR` (0.88) –
+  leaving a wide free channel around every middle ring for travelling gears – and on each face a
+  flat black prism that follows the star outline, grown by `BODY_GROW` (≈ 2 mm on a 60 mm cube) so a black
   rim surrounds the coloured film – as on the real puzzle. The grown outline is computed once with
   a raster (fill, dilate, marching squares, smoothing) to avoid self-intersections in narrow notches.
   The base is cut out exactly at the outer edge of the grown star arms (`holeEdge()`). The hollow cube corner is formed by the base and the side faces of
@@ -163,7 +164,8 @@ after is known, and every piece gets a motion function of t ∈ [0, 1]:
 - pieces in the turning half (and all pieces for `x y z`) rotate rigidly by 90°,
 - edges and centers in the middle ring rotate by 45°,
 - ring gears travel around the axis from their start to their end position while their
-  orientation (including the tilt) is interpolated by quaternion slerp.
+  orientation (including the tilt) is interpolated by quaternion slerp. On the way over the cube
+  edge the gear dips inwards by `GEAR_DIP` (0.14), so it passes below the corner stars.
 
 The scene is built only once per step: each quarter turn sets the group matrix to
 *motion(t) · pose before the quarter turn*, so even `R100` runs smoothly. Only the first and last
