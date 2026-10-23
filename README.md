@@ -142,15 +142,17 @@ stickers are very thin films on black bodies. A fixed black sphere represents th
 - **Corners** (all eight identical): a base up to `CORNER_FLOOR` (0.76), and on each face a black
   prism that follows the star outline, grown by `BODY_GROW` (≈ 2 mm on a 60 mm cube) so a black
   rim surrounds the coloured film – as on the real puzzle. The grown outline is computed once with
-  a raster (fill, dilate, marching squares, smoothing) to avoid self-intersections in narrow notches. The hollow cube corner is lined with three flat walls up to the
-  surface (`HOLE_WALL`), so it is a clean inverted cube. The three middle rings stay free.
+  a raster (fill, dilate, marching squares, smoothing) to avoid self-intersections in narrow notches.
+  The walls of the hollow corner sit exactly at the outer edge of the grown star arms (`holeEdge()`). The hollow cube corner is lined with three flat walls up to the
+  surface (`HOLE_WALL`), so it is a clean inverted cube. Centers and edges have black bodies only
+  slightly larger than their stickers. The three middle rings stay free.
 - **Edges and centers** are rigid pieces inside the middle ring: a center is a column, an edge is
   a small head at the cube edge and a diagonal stem of the same width, extruded as one piece
   (pentagon cross-section). Each one is built in its solved pose and transformed by its rotation
   matrix `R` from the simulation. So an edge sitting in a center slot sticks out of the face, and
   a center sitting in an edge slot lies recessed – as on the real puzzle. (The 2D net shows the
   same situation as a two-coloured sticker.)
-- **Gears** are black bodies (grown the same way) with a coloured top that spin about an axle tilted by `GEAR_TILT`
+- **Gears** are black bodies of the same outline with a coloured top that spin about an axle tilted by `GEAR_TILT`
   (25°) towards the cube edge. In the solved orientation a gear lies flat; turned by 90° it stands
   tilted across a diagonal, and turned by 180° it is tilted the most (twice the axle angle).
 

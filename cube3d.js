@@ -8,10 +8,10 @@ const Cube3D=(()=>{
   const DEF={yaw:0.62,pitch:0.52,dist:6.4};
   const SURF=1.0,LIFT=0.001,THICK=0.004,GEAR_DEPTH=0.06; // Farbflächen hauchdünn, Zahnradkörper
   const RING_W=0.12,RING_IN=0.6,CORE_R=0.62; // halbe Breite des Mittelrings, Innenkante der Mitten, Kern
-  const EDGE_HEAD=0.84,EDGE_HW=0.12,STEM_IN=0.45; // Kantenkopf ab 0.84, halbe Breite längs der Kante, Stielbeginn
+  const EDGE_HEAD=0.84,EDGE_HW=0.095,STEM_IN=0.45; // Kantenkopf ab 0.84, halbe Breite längs der Kante, Stielbeginn
   const GEAR_TILT=25; // Neigung der Zahnradachse in Grad (180° gedreht → doppelt so schief)
   const CORNER_FLOOR=0.76; // Sockel der Ecken: so tief, dass gekippte Zahnräder nie verdeckt werden
-  const HOLE_WALL=0.03,BODY_GROW=0.065; // Wandstärke der hohlen Ecke; schwarze Körper ca. 2 mm größer als die Farbflächen
+  const HOLE_WALL=0.03,BODY_GROW=0.065; // Wandstärke der hohlen Ecke; schwarzer Körper der Ecksterne ca. 2 mm größer als die Farbfläche
 
   // ---------- Materialien ----------
   const mats={};
@@ -49,6 +49,8 @@ const Cube3D=(()=>{
   // Umriss um d nach außen vergrößern (für die schwarzen Körper unter den Farbflächen).
   // Robust über ein Raster: Polygon füllen, alles im Abstand ≤ d dazunehmen, Kontur mit
   // Marching Squares nachzeichnen, vereinfachen. So entstehen in engen Kehlen keine Schleifen.
+  // Abstand der Sternarme (Körper) zur hohlen Ecke: dort liegen die Wände der Aussparung bündig an
+  const holeEdge=body=>Math.min(HOLE0,Math.max(...body.filter(p=>p[1]<-0.62).map(p=>-p[0])));
   function growOutline(pts,d,cell=0.004){
     const xs=pts.map(p=>p[0]),ys=pts.map(p=>p[1]),m=d+3*cell;
     const x0=Math.min(...xs)-m,y0=Math.min(...ys)-m,W=Math.ceil((Math.max(...xs)+m-x0)/cell)+1,H=Math.ceil((Math.max(...ys)+m-y0)/cell)+1;
@@ -74,11 +76,11 @@ const Cube3D=(()=>{
     // Treppenstufen entfernen: ausdünnen und glätten
     return smoothPts(best.filter((_,i)=>i%2===0),3);
   }
-  let STAR_P,STAR_BODY,GEAR_P,GEAR_BODY;
+  let STAR_P,STAR_BODY,GEAR_P,HOLE3D;
 
   // ---------- Teile aufbauen ----------
   function cornerGroup(c){
-    const g=new THREE.Group(),[sx,sy,sz]=c.pos,N=HOLE0,F=CORNER_FLOOR;
+    const g=new THREE.Group(),[sx,sy,sz]=c.pos,N=HOLE3D,F=CORNER_FLOOR; // hohle Ecke genau an der Außenkante der Sternarme
     const B=(a0,a1,b0,b1,c0,c1)=>{const iv=(s,p,q)=>s>0?[p,q]:[-q,-p];
       const[X0,X1]=iv(sx,a0,a1),[Y0,Y1]=iv(sy,b0,b1),[Z0,Z1]=iv(sz,c0,c1);g.add(box(X0,X1,Y0,Y1,Z0,Z1,BODY));};
     // Sockel bis CORNER_FLOOR, die hohle Würfelecke ausgespart (drei Quader)
@@ -104,7 +106,7 @@ const Cube3D=(()=>{
   function ecGroup(e){
     const g=new THREE.Group(),home=e.id.split(""),lo=new THREE.Vector3(),hi=new THREE.Vector3();
     // Mitte: Säule bis RING_IN; Kante: kleiner Kopf an der Würfelkante (EDGE_HEAD)
-    const inner=home.length===1?RING_IN:EDGE_HEAD,half=home.length===1?RING_W:EDGE_HW;
+    const inner=home.length===1?RING_IN:EDGE_HEAD,half=home.length===1?CEN+0.012:EDGE_HW; // schwarzer Körper nur knapp größer als das Plättchen
     for(let i=0;i<3;i++){
       const f=home.map(k=>FACES[k]).find(v=>v[i]!==0);
       if(f){const s=f[i];lo.setComponent(i,s>0?inner:-1);hi.setComponent(i,s>0?1:-inner);}
@@ -149,7 +151,7 @@ const Cube3D=(()=>{
     const g=new THREE.Group(),face=letter(gp.f),[du,dv]=localDir(face,gp.d).map(Math.round);
     // flach mit Ausrichtung zur Kante bauen, dann um die geneigte Achse drehen
     // schwarzer Zahnradkörper (Oberseite bündig mit der Fläche) plus dünne Farbschicht
-    const ang=Math.atan2(dv,du)*180/Math.PI,pts=rotUV(GEAR_BODY,ang,du*GEAR_DRAW,dv*GEAR_DRAW);
+    const ang=Math.atan2(dv,du)*180/Math.PI,pts=rotUV(GEAR_P,ang,du*GEAR_DRAW,dv*GEAR_DRAW);
     const parts=[plate(face,pts,BODY,true,SURF-GEAR_DEPTH,GEAR_DEPTH),plate(face,rotUV(GEAR_P,ang,du*GEAR_DRAW,dv*GEAR_DRAW),faceMat(gp.id[0]),true)];
     const{c,spin}=gearFrame(gp),M=new THREE.Matrix4().makeTranslation(c.x,c.y,c.z).multiply(new THREE.Matrix4().makeRotationFromQuaternion(spin)).multiply(new THREE.Matrix4().makeTranslation(-c.x,-c.y,-c.z));
     for(const m of parts){m.geometry.applyMatrix4(M);g.add(m);}
@@ -255,7 +257,7 @@ const Cube3D=(()=>{
     if(renderer){el.appendChild(renderer.domElement);resize();return true;}
     if(typeof THREE==="undefined")return false;
     BODY=new THREE.MeshStandardMaterial({color:0x141416,roughness:0.35,metalness:0.15});
-    STAR_P=smoothPts(STAR_SYM);GEAR_P=smoothPts(GEAR_PATH);STAR_BODY=growOutline(STAR_P,BODY_GROW);GEAR_BODY=growOutline(GEAR_P,BODY_GROW);
+    STAR_P=smoothPts(STAR_SYM);GEAR_P=smoothPts(GEAR_PATH);STAR_BODY=growOutline(STAR_P,BODY_GROW);HOLE3D=holeEdge(STAR_BODY);
     renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});
     renderer.setPixelRatio(Math.min(2,window.devicePixelRatio||1));
     scene=new THREE.Scene();world=new THREE.Group();scene.add(world);

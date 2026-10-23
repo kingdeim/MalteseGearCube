@@ -3,6 +3,15 @@
 All notable changes to this project are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.5.3] – 2026-10-23
+
+### Changed
+- 3D: only the corner stars keep the larger black body; gears, edges and centers have slim bodies
+  again (centers slimmer than before).
+
+### Fixed
+- 3D: the walls of the hollow corner no longer stick out next to the star arms.
+
 ## [1.5.2] – 2026-10-23
 
 ### Changed
