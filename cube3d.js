@@ -6,11 +6,11 @@ const Cube3D=(()=>{
   let renderer=null,scene,camera,world,container,pieces=[],shown=null;
   let yaw=0.62,pitch=0.52,dist=6.4,needRender=false,anim=null;
   const DEF={yaw:0.62,pitch:0.52,dist:6.4};
-  const SURF=1.0,LIFT=0.004,THICK=0.03;
+  const SURF=1.0,LIFT=0.001,THICK=0.004,GEAR_DEPTH=0.06; // Farbflächen hauchdünn, Zahnradkörper
   const RING_W=0.12,RING_IN=0.6,CORE_R=0.62; // halbe Breite des Mittelrings, Innenkante der Mitten, Kern
   const EDGE_HEAD=0.84,EDGE_HW=0.095,STEM_IN=0.45; // Kantenkopf ab 0.84, halbe Breite längs der Kante, Stielbeginn
   const NOTCH_L=0.3,NOTCH_D=0.8; // Aussparung der Ecken neben den Kantensteinen
-  const GEAR_TILT=10; // Neigung der Zahnradachse in Grad (180° gedreht → doppelt so schief)
+  const GEAR_TILT=15; // Neigung der Zahnradachse in Grad (180° gedreht → doppelt so schief)
 
   // ---------- Materialien ----------
   const mats={};
@@ -29,15 +29,15 @@ const Cube3D=(()=>{
     return m;
   }
   // Polygon (Liste von [u,v]) als dünnes Plättchen auf einer Seite; smooth = weiche Kurve durch Mittelpunkte
-  function plate(face,pts,material,smooth){
+  function plate(face,pts,material,smooth,w=SURF+LIFT,depth=THICK){
     const s=new THREE.Shape(),P=pts.map(([u,v])=>[u,-v]);
     if(smooth){
       const mid=(a,b)=>[(a[0]+b[0])/2,(a[1]+b[1])/2],n=P.length,m0=mid(P[n-1],P[0]);
       s.moveTo(m0[0],m0[1]);
       for(let i=0;i<n;i++){const m=mid(P[i],P[(i+1)%n]);s.quadraticCurveTo(P[i][0],P[i][1],m[0],m[1]);}
     }else{s.moveTo(P[0][0],P[0][1]);for(let i=1;i<P.length;i++)s.lineTo(P[i][0],P[i][1]);}
-    const g=new THREE.ExtrudeGeometry(s,{depth:THICK,bevelEnabled:false,curveSegments:2});
-    g.applyMatrix4(faceMatrix(face,SURF+LIFT));
+    const g=new THREE.ExtrudeGeometry(s,{depth,bevelEnabled:false,curveSegments:2});
+    g.applyMatrix4(faceMatrix(face,w));
     return new THREE.Mesh(g,material);
   }
   const rotUV=(pts,deg,du=0,dv=0)=>{const a=deg*Math.PI/180,c=Math.cos(a),s=Math.sin(a);return pts.map(([u,v])=>[u*c-v*s+du,u*s+v*c+dv]);};
@@ -87,15 +87,19 @@ const Cube3D=(()=>{
       if(f){const s=f[i];lo.setComponent(i,s>0?inner:-1);hi.setComponent(i,s>0?1:-inner);}
       else{lo.setComponent(i,-half);hi.setComponent(i,half);}
     }
-    g.add(box(lo.x,hi.x,lo.y,hi.y,lo.z,hi.z,BODY));
+    if(home.length===1)g.add(box(lo.x,hi.x,lo.y,hi.y,lo.z,hi.z,BODY)); // Mitte: Säule
     if(home.length===2){
-      // Stiel diagonal zum Kern, im Querschnitt so groß wie der Kopf
+      // Kantenstein aus einem Stück: Stiel diagonal zum Kern, oben das „Dach“ der Würfelkante.
+      // Querschnitt = Fünfeck (Breite des Kopfs bis zu seiner breitesten Stelle, dann Spitze).
       const A=V(FACES[home[0]]),Bv=V(FACES[home[1]]),dir=A.clone().add(Bv).normalize();
       const across=A.clone().sub(Bv).normalize(),axis=new THREE.Vector3().crossVectors(across,dir);
-      const r0=STEM_IN,r1=(1+EDGE_HEAD)/Math.SQRT2,w=(1-EDGE_HEAD)*Math.SQRT2;
-      const s=new THREE.BoxGeometry(2*EDGE_HW,w,r1-r0);
-      s.applyMatrix4(new THREE.Matrix4().makeBasis(axis,across,dir).setPosition(dir.clone().multiplyScalar((r0+r1)/2)));
-      g.add(new THREE.Mesh(s,BODY));
+      const r0=STEM_IN,r1=(1+EDGE_HEAD)/Math.SQRT2,h=(1-EDGE_HEAD)/Math.SQRT2;
+      const s=new THREE.Shape();
+      s.moveTo(-h,r0);s.lineTo(h,r0);s.lineTo(h,r1);s.lineTo(0,Math.SQRT2);s.lineTo(-h,r1);s.lineTo(-h,r0);
+      const geo=new THREE.ExtrudeGeometry(s,{depth:2*EDGE_HW,bevelEnabled:false});
+      geo.translate(0,0,-EDGE_HW);
+      geo.applyMatrix4(new THREE.Matrix4().makeBasis(across,dir,axis));
+      g.add(new THREE.Mesh(geo,BODY));
     }
     for(const face of home){
       let region;
@@ -121,10 +125,11 @@ const Cube3D=(()=>{
   function gearGroup(gp){
     const g=new THREE.Group(),face=letter(gp.f),[du,dv]=localDir(face,gp.d).map(Math.round);
     // flach mit Ausrichtung zur Kante bauen, dann um die geneigte Achse drehen
-    const m=plate(face,rotUV(GEAR_P,Math.atan2(dv,du)*180/Math.PI,du*GEAR_DRAW,dv*GEAR_DRAW),faceMat(gp.id[0]),true);
-    const{c,spin}=gearFrame(gp);
-    m.geometry.applyMatrix4(new THREE.Matrix4().makeTranslation(c.x,c.y,c.z).multiply(new THREE.Matrix4().makeRotationFromQuaternion(spin)).multiply(new THREE.Matrix4().makeTranslation(-c.x,-c.y,-c.z)));
-    g.add(m);
+    // schwarzer Zahnradkörper (Oberseite bündig mit der Fläche) plus dünne Farbschicht
+    const pts=rotUV(GEAR_P,Math.atan2(dv,du)*180/Math.PI,du*GEAR_DRAW,dv*GEAR_DRAW);
+    const parts=[plate(face,pts,BODY,true,SURF-GEAR_DEPTH,GEAR_DEPTH),plate(face,pts,faceMat(gp.id[0]),true)];
+    const{c,spin}=gearFrame(gp),M=new THREE.Matrix4().makeTranslation(c.x,c.y,c.z).multiply(new THREE.Matrix4().makeRotationFromQuaternion(spin)).multiply(new THREE.Matrix4().makeTranslation(-c.x,-c.y,-c.z));
+    for(const m of parts){m.geometry.applyMatrix4(M);g.add(m);}
     return g;
   }
   function build(st){

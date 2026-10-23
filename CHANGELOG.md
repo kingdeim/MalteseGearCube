@@ -3,6 +3,16 @@
 All notable changes to this project are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.3.1] – 2026-10-23
+
+### Fixed
+- 3D: edge stones are extruded as one piece (stem and head without a gap).
+- 3D: gears have a black body and a stronger axle tilt (15°), so turned gears visibly stick out.
+- Script URL carries a version parameter so browsers load the new 3D code instead of a cached one.
+
+### Changed
+- 3D: coloured stickers are now very thin films flush with the black bodies.
+
 ## [1.3.0] – 2026-10-23
 
 ### Added

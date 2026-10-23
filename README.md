@@ -138,7 +138,8 @@ each edge stone, plus its three star stickers, leaving the three middle rings fr
 represents the core. Every piece is its own `THREE.Group`, so a move can transform it freely.
 
 Edges and centers are rigid pieces inside the middle ring: a center is a column, an edge is a
-small head at the cube edge connected to the core by a diagonal stem of the same cross-section.
+small head at the cube edge and a diagonal stem of the same width, extruded as one piece
+(pentagon cross-section). All coloured stickers are very thin films on the black bodies.
 Each one is built in its solved
 pose (with its stickers) and then transformed by its rotation matrix `R` from the simulation.
 So an edge sitting in a center slot sticks out of the face as a ridge, and a center sitting
@@ -153,7 +154,8 @@ after is known, and every piece gets a motion function of t ∈ [0, 1]:
 - ring gears travel around the axis from their start to their end position while their
   orientation is interpolated (quaternion slerp) – this shows the 90° spin.
 
-Gears spin about an axle that is tilted by `GEAR_TILT` (10°) towards the cube edge. In the solved
+Gears are black bodies with a thin coloured top and spin about an axle that is tilted by
+`GEAR_TILT` (15°) towards the cube edge. In the solved
 orientation a gear lies flat; turned by 90° it stands tilted across a diagonal, and turned by 180°
 it is tilted the most (twice the axle angle) – as on the real puzzle.
 
