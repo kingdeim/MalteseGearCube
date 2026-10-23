@@ -143,8 +143,8 @@ stickers are very thin films on black bodies. A fixed black sphere represents th
   prism that follows the star outline, grown by `BODY_GROW` (≈ 2 mm on a 60 mm cube) so a black
   rim surrounds the coloured film – as on the real puzzle. The grown outline is computed once with
   a raster (fill, dilate, marching squares, smoothing) to avoid self-intersections in narrow notches.
-  The walls of the hollow corner sit exactly at the outer edge of the grown star arms (`holeEdge()`). The hollow cube corner is lined with three flat walls up to the
-  surface (`HOLE_WALL`), so it is a clean inverted cube. Centers and edges have black bodies only
+  The base is cut out exactly at the outer edge of the grown star arms (`holeEdge()`). The hollow cube corner is formed by the base and the side faces of
+  the grown star arms, so its edges follow the round star outline. Centers and edges have black bodies only
   slightly larger than their stickers. The three middle rings stay free.
 - **Edges and centers** are rigid pieces inside the middle ring: a center is a column, an edge is
   a small head at the cube edge and a diagonal stem of the same width, extruded as one piece

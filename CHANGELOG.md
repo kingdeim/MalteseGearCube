@@ -3,6 +3,12 @@
 All notable changes to this project are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.5.4] – 2026-10-23
+
+### Fixed
+- 3D: removed the square wall blocks of the hollow corner; the star arms and the base now form
+  the hollow, so nothing square sticks out next to the rounded stars.
+
 ## [1.5.3] – 2026-10-23
 
 ### Changed

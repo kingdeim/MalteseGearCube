@@ -11,7 +11,7 @@ const Cube3D=(()=>{
   const EDGE_HEAD=0.84,EDGE_HW=0.095,STEM_IN=0.45; // Kantenkopf ab 0.84, halbe Breite längs der Kante, Stielbeginn
   const GEAR_TILT=25; // Neigung der Zahnradachse in Grad (180° gedreht → doppelt so schief)
   const CORNER_FLOOR=0.76; // Sockel der Ecken: so tief, dass gekippte Zahnräder nie verdeckt werden
-  const HOLE_WALL=0.03,BODY_GROW=0.065; // Wandstärke der hohlen Ecke; schwarzer Körper der Ecksterne ca. 2 mm größer als die Farbfläche
+  const BODY_GROW=0.065; // schwarzer Körper der Ecksterne ca. 2 mm größer als die Farbfläche
 
   // ---------- Materialien ----------
   const mats={};
@@ -85,9 +85,8 @@ const Cube3D=(()=>{
       const[X0,X1]=iv(sx,a0,a1),[Y0,Y1]=iv(sy,b0,b1),[Z0,Z1]=iv(sz,c0,c1);g.add(box(X0,X1,Y0,Y1,Z0,Z1,BODY));};
     // Sockel bis CORNER_FLOOR, die hohle Würfelecke ausgespart (drei Quader)
     B(RING_W,N,RING_W,F,RING_W,F);B(N,F,RING_W,N,RING_W,F);B(N,F,N,F,RING_W,N);
-    // Wände der hohlen Ecke bis zur Oberfläche: ein sauberer, umgedrehter Würfel mit schmalem Rand
-    const T=HOLE_WALL;
-    B(N-T,N,N-T,1,N-T,1);B(N-T,1,N-T,N,N-T,1);B(N-T,1,N-T,1,N-T,N);
+    // Keine eigenen Wandquader: Die Seitenflächen der (vergrößerten) Sternarme reichen genau bis an
+    // die Aussparung und bilden zusammen mit dem Sockel die Wände der hohlen Ecke – rund wie die Sterne.
     // Pro Seite: schwarzer Körper in Sternform (folgt der Kontur) und darauf die etwas
     // kleinere Farbfläche, sodass ringsum ein schwarzer Rand bleibt – wie beim Original
     for(const face of ORDER){const n=FACES[face];if(dot(n,c.pos)<=0.5)continue;
