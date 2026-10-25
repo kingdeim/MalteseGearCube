@@ -18,6 +18,11 @@ switchable in the top-right corner.
   (gears with their own rotation, corners with twist, edges & centers)
 - Macros (e.g. `W`, `J`, `K`, `A`, `C`, `XL`, `XR`, `XB`) – editable and stored in the browser
 - Invert a sequence, optionally expand macros into single moves
+- **Scramble:** "🎲 Scramble" creates a random starting position (25 moves, never the same face twice
+  in a row)
+- **Share by link:** "🔗 Share" creates a link containing the starting position, the move sequence and
+  any custom macros (system share sheet on phones, clipboard on desktop). Opening the link shows exactly
+  that position.
 - Face graphics traced from a photo of the real puzzle (corner stars, asymmetric gears)
 - **3D view** with animated moves: switch the Step panel between "Net" and "3D";
   "Next ▶" / "◀ Back" go one quarter turn at a time (so `R100` can be followed turn by turn),
@@ -184,6 +189,15 @@ direction without a stop; lighting stays fixed like a cube held in the hand. Eve
 hemisphere light and key/fill lights from front, left, right, below, above and behind) keeps every
 side well lit, whichever way the cube is turned. Pointer events handle
 mouse and touch: one finger rotates, two fingers pinch-zoom, double-click/tap resets the view.
+
+### Scramble and share links
+
+`randomScramble()` picks 25 random face turns with 1–4 quarter turns in either direction, avoiding the
+same face twice in a row. `shareURL()` writes the state into the URL fragment, e.g.
+`index.html#s=R+U2&a=W+J2&m=…` (`s` = setup, `a` = sequence, `m` = macros that differ from the defaults).
+The fragment never reaches the server. On load (and on `hashchange`) `loadFromHash()` takes these
+values; shared macros are appended to the macro list for this session only and are kept only if the
+user clicks "Apply macros".
 
 ### Persistence and debugging
 

@@ -3,6 +3,13 @@
 All notable changes to this project are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.6.0] – 2026-10-25
+
+### Added
+- "🎲 Scramble": random starting position with 25 moves.
+- "🔗 Share": link with starting position, move sequence and custom macros (share sheet on phones,
+  clipboard on desktop); opening such a link shows exactly that position.
+
 ## [1.5.8] – 2026-10-25
 
 ### Changed

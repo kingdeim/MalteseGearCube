@@ -92,7 +92,7 @@ details summary{cursor:pointer;color:var(--muted);font-size:14px}
 <main>
   <div class="top">
     <h1 data-i18n="title"></h1>
-    <span class="ver" title="Version">v1.5.8</span>
+    <span class="ver" title="Version">v1.6.0</span>
     <select id="lang" aria-label="Language">
       <option value="de">Deutsch</option>
       <option value="en">English</option>
@@ -114,9 +114,12 @@ details summary{cursor:pointer;color:var(--muted);font-size:14px}
       </div>
     </div>
     <div class="err" id="err"></div>
+    <div class="legend" id="shareMsg" aria-live="polite"></div>
     <div class="row">
       <button class="primary" id="apply" data-i18n="apply"></button>
       <button id="invert" data-i18n="invert" data-i18n-title="invertTitle"></button>
+      <button id="scramble" data-i18n="scramble" data-i18n-title="scrambleTitle"></button>
+      <button id="share" data-i18n="share" data-i18n-title="shareTitle"></button>
       <label class="chk"><input type="checkbox" id="expand"> <span data-i18n="expand"></span></label>
       <label class="chk"><input type="checkbox" id="markers"> <span data-i18n="markers"></span></label>
       <button id="theme" data-i18n-title="theme">◐</button>
@@ -183,7 +186,7 @@ details summary{cursor:pointer;color:var(--muted);font-size:14px}
 </main>
 
 <script src="lib/three.min.js"></script>
-<script src="cube3d.js?v=1.5.8"></script>
+<script src="cube3d.js?v=1.6.0"></script>
 <script>
 "use strict";
 // ---------- Sprachen / i18n ----------
@@ -216,6 +219,8 @@ de:{
   dNone:"Keine Veränderung – die Zugfolge ist (für diese Stellung) die Identität.",
   qInfo:" · Vierteldrehung {k}/{m} von {s}",
   animErr:"Animationsfehler (bitte melden): {msg}",
+  scramble:"🎲 Verdrehen", scrambleTitle:"Zufällige Ausgangsstellung erzeugen (25 Züge)",
+  share:"🔗 Teilen", shareTitle:"Link mit Ausgangsstellung, Zugfolge und eigenen Makros", linkCopied:"Link kopiert – einfach einfügen und verschicken.", linkShow:"Link: {url}",
   speed:"Tempo",
   secInput:"Eingabe", secMoves:"Züge & Veränderungen", secMacros:"Makros",
   viewNet:"Netz", hint3d:"Ziehen dreht den Würfel frei, Mausrad oder zwei Finger zoomen, Doppelklick setzt die Ansicht zurück. Mit „Vor ▶“ und „Abspielen“ werden die Züge animiert.", no3d:"3D nicht verfügbar: lib/three.min.js fehlt oder WebGL ist deaktiviert."
@@ -248,6 +253,8 @@ en:{
   dNone:"No change – the sequence is the identity (for this position).",
   qInfo:" · quarter turn {k}/{m} of {s}",
   animErr:"Animation error (please report): {msg}",
+  scramble:"🎲 Scramble", scrambleTitle:"Create a random starting position (25 moves)",
+  share:"🔗 Share", shareTitle:"Link with starting position, sequence and custom macros", linkCopied:"Link copied – paste it anywhere to share.", linkShow:"Link: {url}",
   speed:"Speed",
   secInput:"Input", secMoves:"Moves & changes", secMacros:"Macros",
   viewNet:"Net", hint3d:"Drag to rotate the cube freely, scroll or pinch to zoom, double-click resets the view. “Next ▶” and “Play” animate the moves.", no3d:"3D unavailable: lib/three.min.js is missing or WebGL is disabled."
@@ -280,6 +287,8 @@ es:{
   dNone:"Sin cambios: la secuencia es la identidad (para esta posición).",
   qInfo:" · cuarto de vuelta {k}/{m} de {s}",
   animErr:"Error de animación (por favor, infórmalo): {msg}",
+  scramble:"🎲 Mezclar", scrambleTitle:"Crear una posición inicial aleatoria (25 movimientos)",
+  share:"🔗 Compartir", shareTitle:"Enlace con posición inicial, secuencia y macros propias", linkCopied:"Enlace copiado: pégalo donde quieras para compartirlo.", linkShow:"Enlace: {url}",
   speed:"Velocidad",
   secInput:"Entrada", secMoves:"Movimientos y cambios", secMacros:"Macros",
   viewNet:"Desarrollo", hint3d:"Arrastra para girar el cubo libremente, la rueda del ratón o dos dedos hacen zoom, doble clic restablece la vista. «Adelante ▶» y «Reproducir» animan los movimientos.", no3d:"3D no disponible: falta lib/three.min.js o WebGL está desactivado."
@@ -707,6 +716,41 @@ function draw(from=null){
 const go=(p,animate)=>{if(p<0||p>Q())return;const from=pos;pos=p;draw(animate?from:null);};
 $("chips").addEventListener("click",e=>{const i=e.target.dataset.i;if(i!==undefined)go(bounds[+i],false);});
 $("apply").onclick=()=>{pos=0;compute();};
+// Zufällig verdrehen: n Züge mit 1–4 Vierteldrehungen, beide Richtungen, nie zweimal dieselbe Seite hintereinander
+function randomScramble(n=25){
+  const F="RLUDFB",out=[];let last="";
+  for(let i=0;i<n;i++){let f;do f=F[Math.floor(Math.random()*6)];while(f===last);last=f;
+    const c=1+Math.floor(Math.random()*4);out.push(f+(c>1?c:"")+(Math.random()<0.5?"'":""));}
+  return out.join(" ");
+}
+$("scramble").onclick=()=>{$("setup").value=randomScramble();pos=0;compute();};
+// Teilen per Link: Ausgangsstellung, Zugfolge und eigene (vom Standard abweichende) Makros im URL-Fragment
+function shareURL(){
+  const p=new URLSearchParams(),s=$("setup").value.trim(),a=$("alg").value.trim();
+  if(s)p.set("s",s);if(a)p.set("a",a);
+  const def=parseMacroText(DEFAULT_MACROS()).macros;
+  const own=Object.keys(MACROS).filter(k=>MACROS[k]!==def[k]).map(k=>k+" = "+MACROS[k]);
+  if(own.length)p.set("m",own.join("\n"));
+  return location.href.split("#")[0]+"#"+p.toString();
+}
+const shareMsg=m=>{$("shareMsg").textContent=m;clearTimeout(shareMsg.tm);shareMsg.tm=setTimeout(()=>$("shareMsg").textContent="",8000);};
+$("share").onclick=async()=>{
+  const url=shareURL();
+  try{history.replaceState(null,"",url);}catch(e){}
+  // Handy: Teilen-Menü des Systems; sonst in die Zwischenablage, notfalls den Link anzeigen
+  if(navigator.share&&matchMedia("(pointer:coarse)").matches){try{await navigator.share({title:document.title,url});return;}catch(e){if(e&&e.name==="AbortError")return;}}
+  try{await navigator.clipboard.writeText(url);shareMsg(t("linkCopied"));}catch(e){shareMsg(t("linkShow",{url}));}
+};
+// Link öffnen: Werte aus dem Fragment übernehmen (eigene Makros nur für diese Sitzung, bis „Makros übernehmen“)
+function loadFromHash(){
+  if(location.hash.length<2)return false;
+  const p=new URLSearchParams(location.hash.slice(1));
+  if(!p.has("s")&&!p.has("a")&&!p.has("m"))return false;
+  if(p.has("m")){$("macros").value=$("macros").value.replace(/\s*$/,"")+"\n# Link\n"+p.get("m")+"\n";loadMacros($("macros").value);}
+  $("setup").value=p.get("s")||"";$("alg").value=p.get("a")||"";
+  return true;
+}
+window.addEventListener("hashchange",()=>{if(loadFromHash()){pos=0;compute();}});
 for(const id of["setup","alg"])$(id).addEventListener("keydown",e=>{if(e.key==="Enter"){pos=0;compute();}});
 $("expand").onchange=()=>{pos=0;compute();};
 $("markers").onchange=()=>draw();
@@ -793,6 +837,7 @@ document.addEventListener("keydown",e=>{if(/INPUT|TEXTAREA/.test(e.target.tagNam
 $("macros").value=store.get("mgcMacros")||DEFAULT_MACROS();
 loadMacros($("macros").value);
 try{const saved=JSON.parse(store.get("mgc")||"null");if(saved){$("setup").value=saved.setup;$("alg").value=saved.alg;}}catch(e){}
+loadFromHash(); // geteilter Link hat Vorrang vor der gespeicherten Eingabe
 compute();
 setView(store.get("mgcView")==="3d"?"3d":"net");
 window.MGC={solved,parse,applySteps,index,describeDiff};
