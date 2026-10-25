@@ -302,9 +302,12 @@ const Cube3D=(()=>{
     scene=new THREE.Scene();world=new THREE.Group();scene.add(world);
     scene.add(new THREE.Mesh(new THREE.SphereGeometry(CORE_R,32,16),BODY)); // fester Kern
     camera=new THREE.PerspectiveCamera(35,1,0.1,100);
-    scene.add(new THREE.HemisphereLight(0xffffff,0x444450,1.6));
-    const d1=new THREE.DirectionalLight(0xffffff,2.2);d1.position.set(3,5,4);scene.add(d1);
-    const d2=new THREE.DirectionalLight(0xffffff,0.7);d2.position.set(-4,-2,-3);scene.add(d2);
+    // Gleichmäßige Studio-Ausleuchtung (fest zur Kamera, da sich der Würfel dreht): Grundhelligkeit,
+    // Himmel/Boden-Licht mit hellem Boden, Hauptlicht von vorn oben, Aufheller links, rechts, unten, oben und hinten
+    scene.add(new THREE.AmbientLight(0xffffff,0.9));
+    scene.add(new THREE.HemisphereLight(0xffffff,0xd8d8e0,0.9));
+    for(const[x,y,z,i]of[[2,3,5,1.4],[-5,0,2,1.0],[5,0,2,1.0],[0,-5,2,0.8],[0,5,1,0.4],[0,2,-5,0.4]]){
+      const l=new THREE.DirectionalLight(0xffffff,i);l.position.set(x,y,z);scene.add(l);}
     el.appendChild(renderer.domElement);
     const cv=renderer.domElement;cv.style.touchAction="none";cv.style.cursor="grab";
     // Ein Finger/Maus: drehen; zwei Finger: zoomen (Abstand der Finger)

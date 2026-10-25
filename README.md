@@ -180,7 +180,9 @@ appears in the input section. The version is shown next to the language selector
 immediately at the quarter turn that is running and reports how many are done – used by "Pause" and by any navigation.
 Rendering is on demand (only while animating or when the view changes). The camera stays fixed and
 the cube itself is rotated (a quaternion about the screen axes), so it can be turned freely in every
-direction without a stop; lighting stays fixed like a cube held in the hand. Pointer events handle
+direction without a stop; lighting stays fixed like a cube held in the hand. Even studio lighting (ambient, a bright
+hemisphere light and key/fill lights from front, left, right, below, above and behind) keeps every
+side well lit, whichever way the cube is turned. Pointer events handle
 mouse and touch: one finger rotates, two fingers pinch-zoom, double-click/tap resets the view.
 
 ### Persistence and debugging

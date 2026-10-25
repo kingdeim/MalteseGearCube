@@ -3,6 +3,11 @@
 All notable changes to this project are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.5.8] – 2026-10-25
+
+### Changed
+- 3D: even studio lighting, so faces pointing sideways or down are no longer dark.
+
 ## [1.5.7] – 2026-10-25
 
 ### Changed
