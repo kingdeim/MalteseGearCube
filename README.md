@@ -18,6 +18,9 @@ switchable in the top-right corner.
   (gears with their own rotation, corners with twist, edges & centers)
 - Macros (e.g. `W`, `J`, `K`, `A`, `C`, `XL`, `XR`, `XB`) – editable and stored in the browser
 - Invert a sequence, optionally expand macros into single moves
+- **Solution guide** (📘): the 8-step method as tabs with explanations in three languages, the algorithms
+  of each step with "▶ Try" (effect on a solved cube) and "➜ On current position", and a live check
+  that ticks off every step already achieved in the position shown.
 - **Scramble:** "🎲 Scramble" creates a random starting position (25 moves, never the same face twice
   in a row)
 - **The address always holds the current state** (starting position, sequence, custom macros, position
@@ -67,6 +70,7 @@ Solved colors: U white, D yellow, F green, B blue, L red, R purple.
 |---|---|
 | `index.html` | markup, CSS and the main script (simulation, parser, 2D rendering, UI) |
 | `cube3d.js` | 3D view and move animation (`Cube3D.mount/show/play`) |
+| `guide.js` | solution guide: steps, texts, algorithms and the step checks (`Guide.render/progress`) |
 | `lib/three.min.js` | [three.js](https://threejs.org) r158, classic (non-module) build, MIT – see `lib/three.LICENSE` |
 
 All files are plain classic scripts (no ES modules, no build step, no external requests),
@@ -191,6 +195,22 @@ direction without a stop; lighting stays fixed like a cube held in the hand. Eve
 hemisphere light and key/fill lights from front, left, right, below, above and behind) keeps every
 side well lit, whichever way the cube is turned. Pointer events handle
 mouse and touch: one finger rotates, two fingers pinch-zoom, double-click/tap resets the view.
+
+### Solution guide (`guide.js`)
+
+The guide follows the common method (corners → gear parity → gears → edges to edge slots → parity →
+edge orientation 90° → edge placement → centers → edge flips 180°). Texts are written from scratch; the
+algorithms come from the solution posted on Reddit r/Cubers and the TwistyPuzzles forum. Every step has a
+check that runs on the position shown (`qStates[pos]`):
+
+- `frame()` derives the whole-cube orientation Q from the corners (all later checks are relative to it,
+  so a rotated cube also counts as solved),
+- gear parity = every gear turned by 0° or 180°; gears solved = every gear in its home slot, unturned,
+- edges in edge slots; an edge is "turned by 90°" if its colours do not point to the two faces of its slot,
+- edges / centers placed = in their home slots; solved = edges placed and not flipped.
+
+Checks are cumulative. Each algorithm was checked with the model: it keeps all earlier steps and only
+changes what its step is about (e.g. `R' W R` turns exactly two edges by 90°).
 
 ### Scramble and hash navigation
 

@@ -63,6 +63,21 @@ details summary{cursor:pointer;color:var(--muted);font-size:14px}
 .help{font-size:14px}
 .help code{background:var(--chip);padding:1px 5px;border-radius:4px}
 .legend{font-size:12px;color:var(--muted);margin-top:6px}
+.gsteps{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.gsteps button{font-size:13px;padding:5px 10px}
+.gsteps button.ok{border-color:#2e9e5b}
+.gsteps button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+#guide h3{margin:4px 0 6px;font-size:16px}
+#guide p{margin:6px 0;font-size:14px}
+#guide code{background:var(--chip);padding:1px 5px;border-radius:4px;font-family:ui-monospace,Consolas,monospace}
+.gstatus{padding:6px 10px;border-radius:8px;background:var(--chip)}
+.gstatus.ok{background:rgba(46,158,91,.16)}
+.galgs{display:flex;flex-direction:column;gap:8px;margin:10px 0}
+.galg{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) auto;gap:6px 10px;align-items:center;border:1px solid var(--line);border-radius:8px;padding:8px 10px}
+.galg code{white-space:normal;word-break:break-word}
+.gbtn{display:flex;gap:6px;flex-wrap:wrap}
+.gbtn button{font-size:13px;padding:4px 9px}
+@media (max-width:760px){.galg{grid-template-columns:1fr}}
 .seg{display:inline-flex;margin:0 0 8px;border:1px solid var(--line);border-radius:8px;overflow:hidden}
 .seg button{border:0;border-radius:0;padding:4px 12px;font-size:13px}
 .seg button.on{background:var(--accent);color:#fff}
@@ -77,7 +92,7 @@ details summary{cursor:pointer;color:var(--muted);font-size:14px}
 @media (max-width:760px){
   /* Handy: zuerst die Ansicht (Reiter + Würfel), danach Eingabe und Rest */
   main{padding:12px 10px 40px;display:flex;flex-direction:column}
-  .top{order:0;margin-bottom:8px}.nettabs{order:1}.nets{order:2}.fold[data-fold="input"]{order:3}.two{order:4}.help{order:5}
+  .top{order:0;margin-bottom:8px}.nettabs{order:1}.nets{order:2}.fold[data-fold="input"]{order:3}.fold[data-fold="guide"]{order:4}.two{order:5}.help{order:6}
   h1{font-size:18px}
   .sub{display:none}
   .nettabs{display:flex;position:sticky;top:0;z-index:5;margin:0 0 8px;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--panel)}
@@ -92,7 +107,7 @@ details summary{cursor:pointer;color:var(--muted);font-size:14px}
 <main>
   <div class="top">
     <h1 data-i18n="title"></h1>
-    <span class="ver" title="Version">v1.6.1</span>
+    <span class="ver" title="Version">v1.7.0</span>
     <select id="lang" aria-label="Language">
       <option value="de">Deutsch</option>
       <option value="en">English</option>
@@ -151,6 +166,10 @@ details summary{cursor:pointer;color:var(--muted);font-size:14px}
       <div class="legend" data-i18n="legendAfter"></div></div>
   </section>
 
+  <details class="panel fold" data-fold="guide" open>
+    <summary data-i18n="secGuide"></summary>
+    <div id="guide"></div>
+  </details>
   <div class="two">
     <details class="panel fold" data-fold="moves" open>
       <summary data-i18n="secMoves"></summary>
@@ -186,7 +205,7 @@ details summary{cursor:pointer;color:var(--muted);font-size:14px}
 </main>
 
 <script src="lib/three.min.js"></script>
-<script src="cube3d.js?v=1.6.1"></script>
+<script src="cube3d.js?v=1.7.0"></script>
 <script>
 "use strict";
 // ---------- Sprachen / i18n ----------
@@ -222,6 +241,7 @@ de:{
   scramble:"🎲 Verdrehen", scrambleTitle:"Zufällige Ausgangsstellung erzeugen (25 Züge)",
   share:"🔗 Teilen", shareTitle:"Link mit Ausgangsstellung, Zugfolge und eigenen Makros", linkCopied:"Link kopiert – einfach einfügen und verschicken.", linkShow:"Link: {url}",
   speed:"Tempo",
+  secGuide:"📘 Lösungsanleitung",
   secInput:"Eingabe", secMoves:"Züge & Veränderungen", secMacros:"Makros",
   viewNet:"Netz", hint3d:"Ziehen dreht den Würfel frei, Mausrad oder zwei Finger zoomen, Doppelklick setzt die Ansicht zurück. Mit „Vor ▶“ und „Abspielen“ werden die Züge animiert.", no3d:"3D nicht verfügbar: lib/three.min.js fehlt oder WebGL ist deaktiviert."
 },
@@ -256,6 +276,7 @@ en:{
   scramble:"🎲 Scramble", scrambleTitle:"Create a random starting position (25 moves)",
   share:"🔗 Share", shareTitle:"Link with starting position, sequence and custom macros", linkCopied:"Link copied – paste it anywhere to share.", linkShow:"Link: {url}",
   speed:"Speed",
+  secGuide:"📘 Solution guide",
   secInput:"Input", secMoves:"Moves & changes", secMacros:"Macros",
   viewNet:"Net", hint3d:"Drag to rotate the cube freely, scroll or pinch to zoom, double-click resets the view. “Next ▶” and “Play” animate the moves.", no3d:"3D unavailable: lib/three.min.js is missing or WebGL is disabled."
 },
@@ -290,6 +311,7 @@ es:{
   scramble:"🎲 Mezclar", scrambleTitle:"Crear una posición inicial aleatoria (25 movimientos)",
   share:"🔗 Compartir", shareTitle:"Enlace con posición inicial, secuencia y macros propias", linkCopied:"Enlace copiado: pégalo donde quieras para compartirlo.", linkShow:"Enlace: {url}",
   speed:"Velocidad",
+  secGuide:"📘 Guía de solución",
   secInput:"Entrada", secMoves:"Movimientos y cambios", secMacros:"Macros",
   viewNet:"Desarrollo", hint3d:"Arrastra para girar el cubo libremente, la rueda del ratón o dos dedos hacen zoom, doble clic restablece la vista. «Adelante ▶» y «Reproducir» animan los movimientos.", no3d:"3D no disponible: falta lib/three.min.js o WebGL está desactivado."
 }};
@@ -560,7 +582,10 @@ function centerMechanism(){ // sichtbare Mechanik in der Mitte (wie am Original)
   for(const[a,b]of[[1,1],[1,-1],[-1,1],[-1,-1]])s+=`<path d="M${f2(a*0.08)},${f2(b*0.13)}L${f2(a*0.13)},${f2(b*0.08)}L${f2(a*0.17)},${f2(b*0.15)}Z"/>`;
   return s+`</g>`;
 }
+let renderSeq=0;
 function render(st,opts={}){
+  // eigene IDs je Netz: Verläufe in einem ausgeblendeten Netz (Reiter auf dem Handy) wären sonst für alle unsichtbar
+  const uid="n"+(++renderSeq);
   const ix=index(st),W=PAD*2+3*FS+2*GAP,H=PAD*2+4*FS+3*GAP,marker=!!opts.markers;
   const changed=opts.changed||new Set(),mv=opts.nextMove;
   const nAx=mv&&!"xyz".includes(mv.face)?FACES[mv.face]:null;
@@ -568,19 +593,19 @@ function render(st,opts={}){
   const OUT_CH=`fill="none" stroke="var(--accent)" stroke-width="2" stroke-opacity=".85" ${NS}`,OUT_RING=`fill="none" stroke="var(--ring)" stroke-width="2" stroke-dasharray="5 3" ${NS}`,OUT_HALF=`fill="none" stroke="var(--ring)" stroke-width="2" stroke-opacity=".75" ${NS}`;
   const mark=(key,p3,shape)=>(changed.has(key)?shape(OUT_CH):"")+(onRing(p3)?shape(OUT_RING):half(p3)?shape(OUT_HALF):"");
   let s=`<svg class="cube" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg"><defs>
-    <radialGradient id="gHole" cx="50%" cy="50%" r="60%"><stop offset="0" stop-color="#000"/><stop offset=".7" stop-color="#151517"/><stop offset="1" stop-color="#2c2c30"/></radialGradient>
-    <linearGradient id="gBody" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#1b1b1e"/><stop offset="1" stop-color="#0a0a0b"/></linearGradient></defs>`;
+    <radialGradient id="gHole${uid}" cx="50%" cy="50%" r="60%"><stop offset="0" stop-color="#000"/><stop offset=".7" stop-color="#151517"/><stop offset="1" stop-color="#2c2c30"/></radialGradient>
+    <linearGradient id="gBody${uid}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#1b1b1e"/><stop offset="1" stop-color="#0a0a0b"/></linearGradient></defs>`;
   for(const face of ORDER){
     const[col,row]=NETPOS[face],tx=PAD+col*(FS+GAP)+FS/2,ty=PAD+row*(FS+GAP)+FS/2;
     let g=`<g transform="translate(${tx},${ty}) scale(${FS/2})">`,ov="";
-    g+=`<rect x="-1" y="-1" width="2" height="2" rx="0.05" fill="url(#gBody)" stroke="#2e2e33" stroke-width="0.012"/>`;
+    g+=`<rect x="-1" y="-1" width="2" height="2" rx="0.05" fill="url(#gBody${uid})" stroke="#2e2e33" stroke-width="0.012"/>`;
     g+=centerMechanism();
     // Ecken: Sterne mit hohler Würfelecke
     for(const su of[-1,1])for(const sv of[-1,1]){
       const p3=P3(face,su,sv),slot=SLOTS.corners.find(c=>near(c.pos,p3.map(Math.sign)));
       const c=ix.corner[slot.name],colr=FACE_COLOR(homeFace(c.R,P3(face,su*0.5,sv*0.5)));
       const hx=su>0?HOLE0:-HOLE1,hy=sv>0?HOLE0:-HOLE1,hw=HOLE1-HOLE0;
-      g+=`<rect x="${f2(hx)}" y="${f2(hy)}" width="${f2(hw)}" height="${f2(hw)}" rx="0.06" fill="url(#gHole)" stroke="#3a3a40" stroke-width="0.012"/>`;
+      g+=`<rect x="${f2(hx)}" y="${f2(hy)}" width="${f2(hw)}" height="${f2(hw)}" rx="0.06" fill="url(#gHole${uid})" stroke="#3a3a40" stroke-width="0.012"/>`;
       g+=`<path d="${STAR_D}" transform="rotate(${{"-1,-1":0,"1,-1":90,"1,1":180,"-1,1":270}[su+","+sv]})" ${STICK(colr)}/>`;
       ov+=mark("c"+slot.name,slot.pos,a=>`<rect x="${su>0?0.08:-0.97}" y="${sv>0?0.08:-0.97}" width="0.89" height="0.89" rx="0.05" ${a}/>`);
     }
@@ -714,6 +739,7 @@ function draw(from=null){
     `<span class="chip ${m.macro?"macro":""} ${bounds[i+1]<=pos?"done":""} ${i===cur?"cur":""}" data-i="${i}" title="${m.macro?m.macro.text.replace(/"/g,"&quot;"):""}">${m.label}</span>`).join("")
     +`<span class="chip ${pos===Q()?"cur":""}" data-i="${steps.length}">${t("end")}</span>`;
   syncHash();
+  if(typeof Guide!=="undefined")Guide.render(); // Status der Lösungsanleitung für die angezeigte Stellung
 }
 const go=(p,animate)=>{if(p<0||p>Q())return;const from=pos;pos=p;draw(animate?from:null);};
 $("chips").addEventListener("click",e=>{const i=e.target.dataset.i;if(i!==undefined)go(bounds[+i],false);});
@@ -868,5 +894,6 @@ setView(hashView&&hashView!=="pref"?hashView:(store.get("mgcView")==="3d"?"3d":"
 hashReady=true;{const h=stateHash();try{history.replaceState(null,"",baseURL()+(h?"#"+h:""));}catch(e){}}
 window.MGC={solved,parse,applySteps,index,describeDiff};
 </script>
+<script src="guide.js?v=1.7.0"></script>
 </body>
 </html>

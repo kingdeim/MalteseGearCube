@@ -3,6 +3,16 @@
 All notable changes to this project are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.7.0] – 2026-10-25
+
+### Added
+- Solution guide (📘) with 8 steps, explanations in German, English and Spanish, the algorithms of
+  each step ("▶ Try" / "➜ On current position") and a live check that ticks off achieved steps.
+
+### Fixed
+- 2D net: on phones the black body could appear white when the "Before" tab was hidden (shared
+  gradient ids); every net now has its own ids.
+
 ## [1.6.1] – 2026-10-25
 
 ### Added
