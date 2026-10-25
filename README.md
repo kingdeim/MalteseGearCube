@@ -20,9 +20,11 @@ switchable in the top-right corner.
 - Invert a sequence, optionally expand macros into single moves
 - **Scramble:** "🎲 Scramble" creates a random starting position (25 moves, never the same face twice
   in a row)
-- **Share by link:** "🔗 Share" creates a link containing the starting position, the move sequence and
-  any custom macros (system share sheet on phones, clipboard on desktop). Opening the link shows exactly
-  that position.
+- **The address always holds the current state** (starting position, sequence, custom macros, position
+  and view), so every position can be bookmarked or shared. A new sequence creates a browser history
+  entry – the browser's back button returns to the previous one; stepping only updates the address.
+- **Share by link:** "🔗 Share" sends exactly this address (system share sheet on phones, clipboard on
+  desktop).
 - Face graphics traced from a photo of the real puzzle (corner stars, asymmetric gears)
 - **3D view** with animated moves: switch the Step panel between "Net" and "3D";
   "Next ▶" / "◀ Back" go one quarter turn at a time (so `R100` can be followed turn by turn),
@@ -190,14 +192,19 @@ hemisphere light and key/fill lights from front, left, right, below, above and b
 side well lit, whichever way the cube is turned. Pointer events handle
 mouse and touch: one finger rotates, two fingers pinch-zoom, double-click/tap resets the view.
 
-### Scramble and share links
+### Scramble and hash navigation
 
 `randomScramble()` picks 25 random face turns with 1–4 quarter turns in either direction, avoiding the
-same face twice in a row. `shareURL()` writes the state into the URL fragment, e.g.
-`index.html#s=R+U2&a=W+J2&m=…` (`s` = setup, `a` = sequence, `m` = macros that differ from the defaults).
-The fragment never reaches the server. On load (and on `hashchange`) `loadFromHash()` takes these
-values; shared macros are appended to the macro list for this session only and are kept only if the
-user clicks "Apply macros".
+same face twice in a row.
+
+The current state always lives in the URL fragment, e.g. `index.html#s=R+U2&a=W+J2&m=…&p=12&v=3d`
+(`s` = setup, `a` = sequence, `m` = macros that differ from the defaults, `p` = position in quarter
+turns, `v` = `net` or `3d`); the fragment never reaches the server. `syncHash()` runs after every redraw:
+if `s`, `a` or `m` changed it uses `history.pushState` (new history entry), otherwise `replaceState`, so
+stepping through `R100` does not flood the history. On load, `popstate` and `hashchange`,
+`loadFromHash()` restores the state; the address wins over the values saved in `localStorage`. Shared
+macros are appended to the macro list for this session only and are kept only if the user clicks
+"Apply macros". "🔗 Share" sends `shareURL()`, i.e. the current address.
 
 ### Persistence and debugging
 

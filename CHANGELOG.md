@@ -3,6 +3,16 @@
 All notable changes to this project are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.6.1] – 2026-10-25
+
+### Added
+- Hash navigation: the address always contains the current state (starting position, sequence,
+  custom macros, position, view). New sequences create browser history entries, so the back button
+  works; stepping only updates the address.
+
+### Fixed
+- Browsers no longer restore old input values on reload, so the address is the single source of truth.
+
 ## [1.6.0] – 2026-10-25
 
 ### Added

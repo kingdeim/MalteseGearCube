@@ -92,7 +92,7 @@ details summary{cursor:pointer;color:var(--muted);font-size:14px}
 <main>
   <div class="top">
     <h1 data-i18n="title"></h1>
-    <span class="ver" title="Version">v1.6.0</span>
+    <span class="ver" title="Version">v1.6.1</span>
     <select id="lang" aria-label="Language">
       <option value="de">Deutsch</option>
       <option value="en">English</option>
@@ -106,11 +106,11 @@ details summary{cursor:pointer;color:var(--muted);font-size:14px}
     <div class="inputs">
       <div>
         <label for="setup" data-i18n="setupLabel"></label>
-        <input type="text" id="setup" data-i18n-ph="setupPh">
+        <input type="text" id="setup" data-i18n-ph="setupPh" autocomplete="off">
       </div>
       <div>
         <label for="alg" data-i18n="algLabel"></label>
-        <input type="text" id="alg" value="R3 B4">
+        <input type="text" id="alg" value="R3 B4" autocomplete="off">
       </div>
     </div>
     <div class="err" id="err"></div>
@@ -164,7 +164,7 @@ details summary{cursor:pointer;color:var(--muted);font-size:14px}
     <details class="panel fold" data-fold="macros" open>
       <summary data-i18n="secMacros"></summary>
       <label for="macros" data-i18n-html="macrosLabel"></label>
-      <textarea id="macros" spellcheck="false"></textarea>
+      <textarea id="macros" spellcheck="false" autocomplete="off"></textarea>
       <div class="err" id="macroErr"></div>
       <div class="row" style="margin-top:4px">
         <button id="macroApply" data-i18n="macroApply"></button>
@@ -186,7 +186,7 @@ details summary{cursor:pointer;color:var(--muted);font-size:14px}
 </main>
 
 <script src="lib/three.min.js"></script>
-<script src="cube3d.js?v=1.6.0"></script>
+<script src="cube3d.js?v=1.6.1"></script>
 <script>
 "use strict";
 // ---------- Sprachen / i18n ----------
@@ -671,7 +671,7 @@ function loadMacros(txt){
 // Vierteldrehung weiter, die Chips springen an den Anfang eines Schritts.
 // quarters: alle Vierteldrehungen, qStates[k]: Stellung nach k Vierteldrehungen,
 // bounds[i]: Position am Anfang von Schritt i (bounds[n] = Q).
-let quarters=[],qStates=[],bounds=[0],pos=0,playFrom=0,netsKey=null,netsAfter=null;
+let quarters=[],qStates=[],bounds=[0],pos=0,playFrom=0,netsKey=null,netsAfter=null,appliedS="",appliedA="";
 const Q=()=>quarters.length;
 const stepAt=p=>{let i=0;while(i<steps.length&&bounds[i+1]<=p)i++;return i;}; // Schritt, in dem p liegt (n = Ende)
 function compute(){
@@ -685,6 +685,7 @@ function compute(){
   qStates=[clone(before)];for(const q of quarters){const s=clone(qStates[qStates.length-1]);applyQ(s,q);qStates.push(s);}
   pos=Math.min(pos,Q());
   store.set("mgc",JSON.stringify({setup:$("setup").value,alg:$("alg").value}));
+  appliedS=$("setup").value.trim();appliedA=$("alg").value.trim(); // angewendete Eingabe (für die Adresse)
   draw();
 }
 // from: Position, von der aus zur aktuellen Position animiert wird (nur in 3D)
@@ -712,6 +713,7 @@ function draw(from=null){
   $("chips").innerHTML=steps.map((m,i)=>(m.first?`<span class="lbl" style="margin:4px 0 0 4px">${m.from}:</span>`:"")+
     `<span class="chip ${m.macro?"macro":""} ${bounds[i+1]<=pos?"done":""} ${i===cur?"cur":""}" data-i="${i}" title="${m.macro?m.macro.text.replace(/"/g,"&quot;"):""}">${m.label}</span>`).join("")
     +`<span class="chip ${pos===Q()?"cur":""}" data-i="${steps.length}">${t("end")}</span>`;
+  syncHash();
 }
 const go=(p,animate)=>{if(p<0||p>Q())return;const from=pos;pos=p;draw(animate?from:null);};
 $("chips").addEventListener("click",e=>{const i=e.target.dataset.i;if(i!==undefined)go(bounds[+i],false);});
@@ -724,33 +726,55 @@ function randomScramble(n=25){
   return out.join(" ");
 }
 $("scramble").onclick=()=>{$("setup").value=randomScramble();pos=0;compute();};
-// Teilen per Link: Ausgangsstellung, Zugfolge und eigene (vom Standard abweichende) Makros im URL-Fragment
-function shareURL(){
-  const p=new URLSearchParams(),s=$("setup").value.trim(),a=$("alg").value.trim();
+// Hash-Navigation: Der aktuelle Zustand steht immer im URL-Fragment, z. B.
+// #s=R+U2&a=W+J2&m=…&p=12&v=3d  (s = Ausgangsstellung, a = Zugfolge, m = vom Standard abweichende
+// Makros, p = Position in Vierteldrehungen, v = 3d). Das Fragment geht nie an den Server.
+function stateHash(){
+  const p=new URLSearchParams(),s=appliedS,a=appliedA;
   if(s)p.set("s",s);if(a)p.set("a",a);
   const def=parseMacroText(DEFAULT_MACROS()).macros;
   const own=Object.keys(MACROS).filter(k=>MACROS[k]!==def[k]).map(k=>k+" = "+MACROS[k]);
   if(own.length)p.set("m",own.join("\n"));
-  return location.href.split("#")[0]+"#"+p.toString();
+  if(pos>0)p.set("p",pos);
+  p.set("v",view); // Ansicht: net oder 3d
+  return p.toString();
+}
+const baseURL=()=>location.href.split("#")[0];
+const shareURL=()=>baseURL()+"#"+stateHash();
+let hashReady=false; // erst nach dem Start schreiben
+// Neue Zugfolge (s, a, m geändert) = neuer Eintrag im Browserverlauf; nur Position/Ansicht = ersetzen
+function syncHash(){
+  if(!hashReady)return;
+  const h=stateHash(),cur=location.hash.slice(1);if(h===cur)return;
+  const o=new URLSearchParams(cur),n=new URLSearchParams(h);
+  const push=["s","a","m"].some(k=>o.get(k)!==n.get(k));
+  try{history[push?"pushState":"replaceState"](null,"",baseURL()+(h?"#"+h:""));}catch(e){}
 }
 const shareMsg=m=>{$("shareMsg").textContent=m;clearTimeout(shareMsg.tm);shareMsg.tm=setTimeout(()=>$("shareMsg").textContent="",8000);};
 $("share").onclick=async()=>{
   const url=shareURL();
-  try{history.replaceState(null,"",url);}catch(e){}
   // Handy: Teilen-Menü des Systems; sonst in die Zwischenablage, notfalls den Link anzeigen
   if(navigator.share&&matchMedia("(pointer:coarse)").matches){try{await navigator.share({title:document.title,url});return;}catch(e){if(e&&e.name==="AbortError")return;}}
   try{await navigator.clipboard.writeText(url);shareMsg(t("linkCopied"));}catch(e){shareMsg(t("linkShow",{url}));}
 };
-// Link öffnen: Werte aus dem Fragment übernehmen (eigene Makros nur für diese Sitzung, bis „Makros übernehmen“)
+// Zustand aus dem Fragment übernehmen; liefert die gewünschte Ansicht (oder null).
+// Mitgeschickte Makros gelten nur für diese Sitzung, bis „Makros übernehmen“.
 function loadFromHash(){
-  if(location.hash.length<2)return false;
+  if(location.hash.length<2)return null;
   const p=new URLSearchParams(location.hash.slice(1));
-  if(!p.has("s")&&!p.has("a")&&!p.has("m"))return false;
-  if(p.has("m")){$("macros").value=$("macros").value.replace(/\s*$/,"")+"\n# Link\n"+p.get("m")+"\n";loadMacros($("macros").value);}
+  if(!["s","a","m","p","v"].some(k=>p.has(k)))return null;
+  if(p.has("m")){
+    const add=Object.entries(parseMacroText(p.get("m")).macros).filter(([k,v])=>MACROS[k]!==v);
+    if(add.length){$("macros").value=$("macros").value.replace(/\s*$/,"")+"\n# Link\n"+add.map(([k,v])=>k+" = "+v).join("\n")+"\n";loadMacros($("macros").value);}
+  }
   $("setup").value=p.get("s")||"";$("alg").value=p.get("a")||"";
-  return true;
+  pos=Math.max(0,parseInt(p.get("p"),10)||0);
+  return p.get("v")==="3d"?"3d":p.get("v")==="net"?"net":"pref"; // "pref" = gespeicherte Vorliebe
 }
-window.addEventListener("hashchange",()=>{if(loadFromHash()){pos=0;compute();}});
+// Browser-Zurück/Vor und manuell geänderte Adresse
+const fromHistory=()=>{const v=loadFromHash();if(v===null)return;compute();if(v!=="pref"&&v!==view)setView(v);};
+window.addEventListener("popstate",fromHistory);
+window.addEventListener("hashchange",fromHistory);
 for(const id of["setup","alg"])$(id).addEventListener("keydown",e=>{if(e.key==="Enter"){pos=0;compute();}});
 $("expand").onchange=()=>{pos=0;compute();};
 $("markers").onchange=()=>draw();
@@ -837,9 +861,11 @@ document.addEventListener("keydown",e=>{if(/INPUT|TEXTAREA/.test(e.target.tagNam
 $("macros").value=store.get("mgcMacros")||DEFAULT_MACROS();
 loadMacros($("macros").value);
 try{const saved=JSON.parse(store.get("mgc")||"null");if(saved){$("setup").value=saved.setup;$("alg").value=saved.alg;}}catch(e){}
-loadFromHash(); // geteilter Link hat Vorrang vor der gespeicherten Eingabe
+const hashView=loadFromHash(); // Zustand aus der Adresse hat Vorrang vor der gespeicherten Eingabe
 compute();
-setView(store.get("mgcView")==="3d"?"3d":"net");
+setView(hashView&&hashView!=="pref"?hashView:(store.get("mgcView")==="3d"?"3d":"net"));
+// ab jetzt den Zustand in die Adresse schreiben (beim Start ohne neuen Verlaufseintrag)
+hashReady=true;{const h=stateHash();try{history.replaceState(null,"",baseURL()+(h?"#"+h:""));}catch(e){}}
 window.MGC={solved,parse,applySteps,index,describeDiff};
 </script>
 </body>
