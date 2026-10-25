@@ -167,8 +167,12 @@ after is known, and every piece gets a motion function of t ∈ [0, 1]:
   orientation (including the tilt) is interpolated by quaternion slerp. On the way over the cube
   edge the gear dips inwards by `GEAR_DIP` (0.14), so it passes below the corner stars.
 
-The scene is built only once per step: each quarter turn sets the group matrix to
-*motion(t) · pose before the quarter turn*, so even `R100` runs smoothly. Only the first and last
+The scene is not rebuilt for an animation: each quarter turn sets the group matrix to
+*motion(t) · pose before the quarter turn*, and the pieces simply stay in their final pose.
+The target state is passed along, so the next step starts without a rebuild either. A rebuild
+only happens when a different position is shown (jumps, new input), and it reuses cached piece
+geometries (`GEO`): a corner's shape depends only on its slot, an edge/center's on its rotation and
+a gear's on its slot and orientation – only the colours differ. This matters a lot on phones. Only the first and last
 quarter turn of a step accelerate and decelerate; in between the speed is constant. The speed
 slider sets the duration per quarter turn (900 … 150 ms). "◀ Back" plays the inverse of the step backwards. An error during an animation does not freeze it: the final position is shown and the message
 appears in the input section. The version is shown next to the language selector. `Cube3D.stop()` ends an animation

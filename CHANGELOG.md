@@ -3,6 +3,14 @@
 All notable changes to this project are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.5.6] – 2026-10-25
+
+### Fixed
+- Phones: moves were shown only after a delay of several seconds and short steps like `R1` were
+  not animated. The 3D scene is no longer rebuilt before and after each animation; rebuilds reuse
+  cached piece shapes; Before/After nets and the change list are only redrawn when the sequence
+  changes.
+
 ## [1.5.5] – 2026-10-23
 
 ### Fixed

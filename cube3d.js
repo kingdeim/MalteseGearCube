@@ -96,7 +96,7 @@ const Cube3D=(()=>{
       const col=homeFace(c.R,P3(face,su*0.5,sv*0.5));
       const deg={"-1,-1":0,"1,-1":90,"1,1":180,"-1,1":270}[su+","+sv];
       g.add(plate(face,rotUV(STAR_BODY,deg),BODY,true,F,SURF-F));
-      g.add(plate(face,rotUV(STAR_P,deg),faceMat(col),true));
+      const film=plate(face,rotUV(STAR_P,deg),faceMat(col),true);film.userData.sample=[face,su*0.5,sv*0.5];g.add(film);
     }
     return g;
   }
@@ -158,12 +158,34 @@ const Cube3D=(()=>{
     for(const m of parts){m.geometry.applyMatrix4(M);g.add(m);}
     return g;
   }
+  // Formen-Zwischenspeicher: Die Geometrie eines Teils hängt nur von seinem Platz (Ecken), seiner
+  // Drehung (Kanten/Mitten) bzw. Platz und Ausrichtung (Zahnräder) ab – nicht von seiner Farbe.
+  // Einmal berechnete Formen werden wiederverwendet; neu entstehen nur die (billigen) Meshes.
+  // Ein Eintrag ist eine Liste von {geo, mat} bzw. {geo, sample:[Seite,u,v]} für Farbflächen der Ecken.
+  const GEO=new Map();
+  function fromTemplate(key,make,matOf){
+    let tpl=GEO.get(key);
+    if(!tpl){tpl=make().children.map(m=>({geo:m.geometry,mat:m.material,sample:m.userData.sample||null}));GEO.set(key,tpl);}
+    const g=new THREE.Group();
+    for(const t of tpl)g.add(new THREE.Mesh(t.geo,matOf(t)));
+    return g;
+  }
+  const rk=R=>R.flat().map(x=>Math.round(x*1e4)).join(",");
+  function cornerPiece(c){
+    return fromTemplate("c"+c.pos.join(","),()=>cornerGroup(c),t=>t.sample?faceMat(homeFace(c.R,P3(...t.sample))):t.mat);
+  }
+  function ecPiece(e){return fromTemplate("e"+e.id+"|"+rk(e.R),()=>ecGroup(e),t=>t.mat);}
+  function gearPiece(gp){
+    const th=Math.round(Math.atan2(dot(cross(gp.d,gp.P),gp.f),dot(gp.d,gp.P))*180/Math.PI);
+    return fromTemplate("g"+letter(gp.f)+letter(gp.d)+"|"+th,()=>gearGroup(gp),t=>t.mat===BODY?BODY:faceMat(gp.id[0]));
+  }
   function build(st){
-    for(const p of pieces){world.remove(p.group);p.group.traverse(o=>{if(o.geometry)o.geometry.dispose();});}
+    for(const p of pieces)world.remove(p.group); // Geometrien bleiben im Zwischenspeicher
     pieces=[];
-    for(const c of st.corners){const grp=cornerGroup(c);pieces.push({kind:"c",id:c.id,group:grp});world.add(grp);}
-    for(const e of st.ecs){const grp=ecGroup(e);pieces.push({kind:"e",id:e.id,group:grp});world.add(grp);}
-    for(const gp of st.gears){const grp=gearGroup(gp);pieces.push({kind:"g",id:gp.id,group:grp});world.add(grp);}
+    for(const c of st.corners){const grp=cornerPiece(c);pieces.push({kind:"c",id:c.id,group:grp});world.add(grp);}
+    for(const e of st.ecs){const grp=ecPiece(e);pieces.push({kind:"e",id:e.id,group:grp});world.add(grp);}
+    for(const gp of st.gears){const grp=gearPiece(gp);pieces.push({kind:"g",id:gp.id,group:grp});world.add(grp);}
+    for(const p of pieces)p.group.matrixAutoUpdate=false; // Lage wird nur noch über die Matrix gesetzt
     shown=st;requestRender();
   }
 
@@ -201,35 +223,41 @@ const Cube3D=(()=>{
   const ONE=typeof THREE!=="undefined"?new THREE.Vector3(1,1,1):null;
   let finalState=null;
   // Spielt eine Liste von Viertelzügen ab; liefert ein Promise, das nach dem letzten Zug erfüllt ist.
-  // Die Teile werden nur einmal aufgebaut: jeder Viertelzug setzt Gruppenmatrix = Bewegung(t) · Lage davor.
-  function play(st0,quarters,per=400){
+  // Der Würfel wird dafür nicht neu aufgebaut: Zeigt die Szene schon st0, werden die vorhandenen
+  // Teile bewegt (Gruppenmatrix = Bewegung(t) · Lage davor) und bleiben am Ende einfach stehen.
+  // st1 (optional) ist die Zielstellung; wird sie mitgegeben, erkennt der nächste Aufruf sie wieder.
+  // Das ist auf langsamen Geräten (Handy) entscheidend – ein Neuaufbau kann dort Sekunden dauern.
+  function play(st0,quarters,per=400,st1=null){
     stop();
     if(!renderer||!quarters.length)return Promise.resolve();
-    finalState=quarters.reduce((s,q)=>{applyQ(s,q);return s;},clone(st0));
-    build(st0);
-    for(const p of pieces){p.group.matrixAutoUpdate=false;p.group.updateMatrix();}
+    finalState=st1||quarters.reduce((s,q)=>{applyQ(s,q);return s;},clone(st0));
+    if(shown!==st0)build(st0);
     return new Promise(resolve=>{
       const n=quarters.length;let st=clone(st0),i=0,mv=null,base=null,t0=0;
       const begin=start=>{const end=clone(st);applyQ(end,quarters[i]);mv=motions(st,end,quarters[i]);st=end;
         base=new Map(pieces.map(p=>[p,p.group.matrix.clone()]));t0=start;};
-      anim={resolve,snap:()=>({st,done:Math.min(i+1,n)}),frame:now=>{
-        if(!mv)begin(now);
-        const t=Math.min(1,(now-t0)/per);
-        const e=n===1?ease(t):i===0?easeIn(t):i===n-1?easeOut(t):t;
-        for(const p of pieces){const f=mv.get(p.kind+p.id);if(!f)continue;const m=f(e);
-          p.group.matrix.compose(m.p,m.q,ONE).multiply(base.get(p));}
-        if(t>=1){
-          i++;
-          if(i>=n){anim=null;build(finalState);finalState=null;resolve();}
-          else begin(Math.max(now-per,t0+per)); // nahtlos weiter, bei starkem Ruckeln nicht nachholen
-        }
-      }};
+      const pose=e=>{for(const p of pieces){const f=mv.get(p.kind+p.id);if(!f)continue;const m=f(e);
+        p.group.matrix.compose(m.p,m.q,ONE).multiply(base.get(p));}};
+      anim={resolve,
+        // für „Pause“: aktuelle Vierteldrehung fertig stellen
+        // (ist es die letzte, gilt die übergebene Zielstellung – so entfällt der nächste Neuaufbau)
+        snap:()=>{if(!mv)return {st,done:i};pose(1);return {st:i+1>=n&&finalState?finalState:st,done:i+1};},
+        frame:now=>{
+          if(!mv)begin(now);
+          const t=Math.min(1,(now-t0)/per);
+          pose(n===1?ease(t):i===0?easeIn(t):i===n-1?easeOut(t):t);
+          if(t>=1){
+            i++;
+            if(i>=n){anim=null;shown=finalState;finalState=null;resolve();}
+            else begin(Math.max(now-per,t0+per)); // nahtlos weiter, bei starkem Ruckeln nicht nachholen
+          }
+        }};
       loop();
     });
   }
   // Bricht eine laufende Animation sofort ab und zeigt die Stellung nach der gerade laufenden
   // Vierteldrehung; liefert die Zahl der damit fertigen Vierteldrehungen (oder null)
-  function stop(){if(!anim)return null;const r=anim.resolve,s=anim.snap();anim=null;finalState=null;build(s.st);r();return s.done;}
+  function stop(){if(!anim)return null;const r=anim.resolve,s=anim.snap();anim=null;finalState=null;shown=s.st;requestRender();r();return s.done;}
 
   // ---------- Szene, Kamera, Bedienung ----------
   function placeCamera(){
@@ -280,6 +308,9 @@ const Cube3D=(()=>{
     resize();placeCamera();
     return true;
   }
-  function show(st){stop();if(renderer)build(st);}
-  return {mount,show,play,stop,get ready(){return !!renderer;}};
+  // Neuaufbau nur, wenn wirklich eine andere Stellung gezeigt werden soll
+  function show(st){stop();if(renderer&&st!==shown)build(st);}
+  // Die angezeigte Stellung entspricht st (z. B. nach „Pause“): spart den Neuaufbau
+  function adopt(st){if(!anim)shown=st;}
+  return {mount,show,play,stop,adopt,get ready(){return !!renderer;}};
 })();

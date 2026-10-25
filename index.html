@@ -92,7 +92,7 @@ details summary{cursor:pointer;color:var(--muted);font-size:14px}
 <main>
   <div class="top">
     <h1 data-i18n="title"></h1>
-    <span class="ver" title="Version">v1.5.5</span>
+    <span class="ver" title="Version">v1.5.6</span>
     <select id="lang" aria-label="Language">
       <option value="de">Deutsch</option>
       <option value="en">English</option>
@@ -183,7 +183,7 @@ details summary{cursor:pointer;color:var(--muted);font-size:14px}
 </main>
 
 <script src="lib/three.min.js"></script>
-<script src="cube3d.js?v=1.5.5"></script>
+<script src="cube3d.js?v=1.5.6"></script>
 <script>
 "use strict";
 // ---------- Sprachen / i18n ----------
@@ -662,7 +662,7 @@ function loadMacros(txt){
 // Vierteldrehung weiter, die Chips springen an den Anfang eines Schritts.
 // quarters: alle Vierteldrehungen, qStates[k]: Stellung nach k Vierteldrehungen,
 // bounds[i]: Position am Anfang von Schritt i (bounds[n] = Q).
-let quarters=[],qStates=[],bounds=[0],pos=0,playFrom=0;
+let quarters=[],qStates=[],bounds=[0],pos=0,playFrom=0,netsKey=null,netsAfter=null;
 const Q=()=>quarters.length;
 const stepAt=p=>{let i=0;while(i<steps.length&&bounds[i+1]<=p)i++;return i;}; // Schritt, in dem p liegt (n = Ende)
 function compute(){
@@ -681,12 +681,17 @@ function compute(){
 // from: Position, von der aus zur aktuellen Position animiert wird (nur in 3D)
 function draw(from=null){
   const after=qStates[Q()],mk=$("markers").checked,cur=stepAt(pos);
-  const sa=signature(index(before)),sb=signature(index(after)),ch=new Set(Object.keys(sa).filter(k=>sa[k]!==sb[k]));
-  $("netBefore").innerHTML=render(before,{markers:mk});
-  $("netAfter").innerHTML=render(after,{changed:ch,markers:mk});
+  // Vorher/Nachher und die Veränderungen hängen nicht von der Position ab: nur bei Bedarf neu zeichnen
+  const key=[$("setup").value,$("alg").value,$("expand").checked,mk,LANG].join("|");
+  if(key!==netsKey||after!==netsAfter){netsKey=key;netsAfter=after;
+    const sa=signature(index(before)),sb=signature(index(after)),ch=new Set(Object.keys(sa).filter(k=>sa[k]!==sb[k]));
+    $("netBefore").innerHTML=render(before,{markers:mk});
+    $("netAfter").innerHTML=render(after,{changed:ch,markers:mk});
+    $("diff").innerHTML=describeDiff(before,after);
+  }
   if(view==="3d"){
-    if(from!==null&&from<pos)anim3d=Cube3D.play(qStates[from],quarters.slice(from,pos),SPEED3D[speed()]);
-    else if(from!==null&&from>pos)anim3d=Cube3D.play(qStates[from],invQ(quarters.slice(pos,from)),SPEED3D[speed()]);
+    if(from!==null&&from<pos)anim3d=Cube3D.play(qStates[from],quarters.slice(from,pos),SPEED3D[speed()],qStates[pos]);
+    else if(from!==null&&from>pos)anim3d=Cube3D.play(qStates[from],invQ(quarters.slice(pos,from)),SPEED3D[speed()],qStates[pos]);
     else{Cube3D.show(qStates[pos]);anim3d=null;}
   }else $("netStep").innerHTML=render(qStates[pos],{nextMove:quarters[pos]||null,markers:mk});
   $("lblBefore").textContent=$("setup").value.trim()||t("solved");
@@ -698,7 +703,6 @@ function draw(from=null){
   $("chips").innerHTML=steps.map((m,i)=>(m.first?`<span class="lbl" style="margin:4px 0 0 4px">${m.from}:</span>`:"")+
     `<span class="chip ${m.macro?"macro":""} ${bounds[i+1]<=pos?"done":""} ${i===cur?"cur":""}" data-i="${i}" title="${m.macro?m.macro.text.replace(/"/g,"&quot;"):""}">${m.label}</span>`).join("")
     +`<span class="chip ${pos===Q()?"cur":""}" data-i="${steps.length}">${t("end")}</span>`;
-  $("diff").innerHTML=describeDiff(before,after);
 }
 const go=(p,animate)=>{if(p<0||p>Q())return;const from=pos;pos=p;draw(animate?from:null);};
 $("chips").addEventListener("click",e=>{const i=e.target.dataset.i;if(i!==undefined)go(bounds[+i],false);});
@@ -717,7 +721,7 @@ const speed=()=>+$("speed").value;
 $("speed").oninput=()=>store.set("mgcSpeed",$("speed").value);
 // Abspielen: bis zum Ende, jeweils bis zur nächsten Schrittgrenze; in 3D nach Ende der Animation
 $("play").onclick=async()=>{
-  if(timer){timer=null;const done=Cube3D.stop();if(done!==null){pos=playFrom+done;draw();}$("play").textContent=t("play");return;}
+  if(timer){timer=null;const done=Cube3D.stop();if(done!==null){pos=playFrom+done;Cube3D.adopt(qStates[pos]);draw();}$("play").textContent=t("play");return;}
   const me=timer={};$("play").textContent=t("pause");
   if(pos>=Q())go(0,false);
   while(timer===me&&pos<Q()){
