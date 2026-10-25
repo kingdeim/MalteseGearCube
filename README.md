@@ -22,7 +22,8 @@ switchable in the top-right corner.
 - **3D view** with animated moves: switch the Step panel between "Net" and "3D";
   "Next ▶" / "◀ Back" go one quarter turn at a time (so `R100` can be followed turn by turn),
   the step chips jump to the start of a step, and "Play" runs to the end – animating every quarter turn (half 90°, middle ring 45°, gears spinning).
-  Drag to rotate, scroll to zoom, double-click to reset the view; a slider sets the speed.
+  Drag to rotate freely in any direction, scroll or pinch to zoom, double-click to reset the view;
+  a slider sets the speed.
 - Mobile layout: the cube view comes first; on small screens "Step", "Before" and "After" are
   tabs, and the input, moves/changes and macro sections can be collapsed (state is remembered).
   The playback controls sit directly below the view.
@@ -177,8 +178,10 @@ quarter turn of a step accelerate and decelerate; in between the speed is consta
 slider sets the duration per quarter turn (900 … 150 ms). "◀ Back" plays the inverse of the step backwards. An error during an animation does not freeze it: the final position is shown and the message
 appears in the input section. The version is shown next to the language selector. `Cube3D.stop()` ends an animation
 immediately at the quarter turn that is running and reports how many are done – used by "Pause" and by any navigation.
-Rendering is on demand (only while animating or when the view changes); the camera is a small
-orbit control written for pointer events, so it works with mouse and touch.
+Rendering is on demand (only while animating or when the view changes). The camera stays fixed and
+the cube itself is rotated (a quaternion about the screen axes), so it can be turned freely in every
+direction without a stop; lighting stays fixed like a cube held in the hand. Pointer events handle
+mouse and touch: one finger rotates, two fingers pinch-zoom, double-click/tap resets the view.
 
 ### Persistence and debugging
 

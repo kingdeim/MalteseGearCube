@@ -3,6 +3,15 @@
 All notable changes to this project are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.5.7] – 2026-10-25
+
+### Changed
+- 3D: the cube can be rotated freely in every direction (no more stop at the top or bottom face);
+  the cube is turned instead of the camera.
+
+### Added
+- 3D: two-finger pinch zoom on touch screens.
+
 ## [1.5.6] – 2026-10-25
 
 ### Fixed

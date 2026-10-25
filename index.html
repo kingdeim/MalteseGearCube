@@ -92,7 +92,7 @@ details summary{cursor:pointer;color:var(--muted);font-size:14px}
 <main>
   <div class="top">
     <h1 data-i18n="title"></h1>
-    <span class="ver" title="Version">v1.5.6</span>
+    <span class="ver" title="Version">v1.5.7</span>
     <select id="lang" aria-label="Language">
       <option value="de">Deutsch</option>
       <option value="en">English</option>
@@ -183,7 +183,7 @@ details summary{cursor:pointer;color:var(--muted);font-size:14px}
 </main>
 
 <script src="lib/three.min.js"></script>
-<script src="cube3d.js?v=1.5.6"></script>
+<script src="cube3d.js?v=1.5.7"></script>
 <script>
 "use strict";
 // ---------- Sprachen / i18n ----------
@@ -218,7 +218,7 @@ de:{
   animErr:"Animationsfehler (bitte melden): {msg}",
   speed:"Tempo",
   secInput:"Eingabe", secMoves:"Züge & Veränderungen", secMacros:"Makros",
-  viewNet:"Netz", hint3d:"Ziehen dreht den Würfel, Mausrad zoomt, Doppelklick setzt die Ansicht zurück. Mit „Vor ▶“ und „Abspielen“ werden die Züge animiert.", no3d:"3D nicht verfügbar: lib/three.min.js fehlt oder WebGL ist deaktiviert."
+  viewNet:"Netz", hint3d:"Ziehen dreht den Würfel frei, Mausrad oder zwei Finger zoomen, Doppelklick setzt die Ansicht zurück. Mit „Vor ▶“ und „Abspielen“ werden die Züge animiert.", no3d:"3D nicht verfügbar: lib/three.min.js fehlt oder WebGL ist deaktiviert."
 },
 en:{
   title:"Maltese Gear Cube – Move Sequence Explorer",
@@ -250,7 +250,7 @@ en:{
   animErr:"Animation error (please report): {msg}",
   speed:"Speed",
   secInput:"Input", secMoves:"Moves & changes", secMacros:"Macros",
-  viewNet:"Net", hint3d:"Drag to rotate the cube, scroll to zoom, double-click resets the view. “Next ▶” and “Play” animate the moves.", no3d:"3D unavailable: lib/three.min.js is missing or WebGL is disabled."
+  viewNet:"Net", hint3d:"Drag to rotate the cube freely, scroll or pinch to zoom, double-click resets the view. “Next ▶” and “Play” animate the moves.", no3d:"3D unavailable: lib/three.min.js is missing or WebGL is disabled."
 },
 es:{
   title:"Maltese Gear Cube – Explorador de secuencias",
@@ -282,7 +282,7 @@ es:{
   animErr:"Error de animación (por favor, infórmalo): {msg}",
   speed:"Velocidad",
   secInput:"Entrada", secMoves:"Movimientos y cambios", secMacros:"Macros",
-  viewNet:"Desarrollo", hint3d:"Arrastra para girar el cubo, la rueda del ratón hace zoom, doble clic restablece la vista. «Adelante ▶» y «Reproducir» animan los movimientos.", no3d:"3D no disponible: falta lib/three.min.js o WebGL está desactivado."
+  viewNet:"Desarrollo", hint3d:"Arrastra para girar el cubo libremente, la rueda del ratón o dos dedos hacen zoom, doble clic restablece la vista. «Adelante ▶» y «Reproducir» animan los movimientos.", no3d:"3D no disponible: falta lib/three.min.js o WebGL está desactivado."
 }};
 let LANG="de";
 const t=(k,v={})=>(I18N[LANG][k]??I18N.de[k]??k).replace(/\{(\w+)\}/g,(_,n)=>v[n]??"");

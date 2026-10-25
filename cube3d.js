@@ -4,8 +4,10 @@
 // diese werden erst beim Aufruf gebraucht, daher darf diese Datei vorher geladen werden.
 const Cube3D=(()=>{
   let renderer=null,scene,camera,world,container,pieces=[],shown=null;
-  let yaw=0.62,pitch=0.52,dist=6.4,needRender=false,anim=null;
-  const DEF={yaw:0.62,pitch:0.52,dist:6.4};
+  // Ansicht: Die Kamera steht fest; gedreht wird der Würfel (world) – frei in alle Richtungen, ohne Anschlag
+  let dist=6.4,needRender=false,anim=null;
+  const DEF_YAW=0.62,DEF_PITCH=0.52,DEF_DIST=6.4;
+  let orient=null; // Quaternion der Würfeldrehung
   const SURF=1.0,LIFT=0.001,THICK=0.004,GEAR_DEPTH=0.06; // Farbflächen hauchdünn, Zahnradkörper
   const RING_W=0.12,RING_IN=0.6,CORE_R=0.62; // halbe Breite des Mittelrings, Innenkante der Mitten, Kern
   const EDGE_HEAD=0.84,EDGE_HW=0.095,STEM_IN=0.45; // Kantenkopf ab 0.84, halbe Breite längs der Kante, Stielbeginn
@@ -260,9 +262,17 @@ const Cube3D=(()=>{
   function stop(){if(!anim)return null;const r=anim.resolve,s=anim.snap();anim=null;finalState=null;shown=s.st;requestRender();r();return s.done;}
 
   // ---------- Szene, Kamera, Bedienung ----------
+  const resetView=()=>{dist=DEF_DIST;orient=new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1,0,0),DEF_PITCH)
+    .multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0),-DEF_YAW));};
   function placeCamera(){
-    camera.position.set(dist*Math.cos(pitch)*Math.sin(yaw),dist*Math.sin(pitch),dist*Math.cos(pitch)*Math.cos(yaw));
-    camera.lookAt(0,0,0);requestRender();
+    camera.position.set(0,0,dist);camera.lookAt(0,0,0);
+    world.quaternion.copy(orient);requestRender();
+  }
+  // Ziehen um dx/dy Pixel: Drehung um die Bildschirmachsen (hoch = y, rechts = x), beliebig weit
+  function dragRotate(dx,dy){
+    const q=new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0),dx*0.01)
+      .multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1,0,0),dy*0.01));
+    orient=q.multiply(orient).normalize();placeCamera();
   }
   function requestRender(){needRender=true;loop();}
   let looping=false;
@@ -297,15 +307,21 @@ const Cube3D=(()=>{
     const d2=new THREE.DirectionalLight(0xffffff,0.7);d2.position.set(-4,-2,-3);scene.add(d2);
     el.appendChild(renderer.domElement);
     const cv=renderer.domElement;cv.style.touchAction="none";cv.style.cursor="grab";
-    let drag=null;
-    cv.addEventListener("pointerdown",e=>{drag={x:e.clientX,y:e.clientY};cv.setPointerCapture(e.pointerId);cv.style.cursor="grabbing";});
-    cv.addEventListener("pointermove",e=>{if(!drag)return;yaw-=(e.clientX-drag.x)*0.01;pitch=Math.max(-1.45,Math.min(1.45,pitch+(e.clientY-drag.y)*0.01));drag={x:e.clientX,y:e.clientY};placeCamera();});
-    const up=()=>{drag=null;cv.style.cursor="grab";};
+    // Ein Finger/Maus: drehen; zwei Finger: zoomen (Abstand der Finger)
+    const ptrs=new Map();let pinch=0;
+    const spread=()=>{const[a,b]=[...ptrs.values()];return Math.hypot(a.x-b.x,a.y-b.y)||1;};
+    cv.addEventListener("pointerdown",e=>{ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});cv.setPointerCapture(e.pointerId);cv.style.cursor="grabbing";
+      if(ptrs.size===2)pinch=spread();});
+    cv.addEventListener("pointermove",e=>{const p=ptrs.get(e.pointerId);if(!p)return;
+      if(ptrs.size===1)dragRotate(e.clientX-p.x,e.clientY-p.y);
+      p.x=e.clientX;p.y=e.clientY;
+      if(ptrs.size===2){const s=spread();dist=Math.max(4,Math.min(14,dist*pinch/s));pinch=s;placeCamera();}});
+    const up=e=>{ptrs.delete(e.pointerId);if(!ptrs.size)cv.style.cursor="grab";};
     cv.addEventListener("pointerup",up);cv.addEventListener("pointercancel",up);
     cv.addEventListener("wheel",e=>{e.preventDefault();dist=Math.max(4,Math.min(14,dist*(e.deltaY>0?1.08:1/1.08)));placeCamera();},{passive:false});
-    cv.addEventListener("dblclick",()=>{({yaw,pitch,dist}=DEF);placeCamera();});
+    cv.addEventListener("dblclick",()=>{resetView();placeCamera();});
     new ResizeObserver(resize).observe(el);
-    resize();placeCamera();
+    resetView();resize();placeCamera();
     return true;
   }
   // Neuaufbau nur, wenn wirklich eine andere Stellung gezeigt werden soll
